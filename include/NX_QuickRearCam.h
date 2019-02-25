@@ -94,7 +94,11 @@ enum {
 	CAM_TYPE_VIP,
 };
 
-
+enum {
+	STATUS_STOP = 0,
+	STATUS_RUN,
+	STATUS_MAX
+};
 
 enum deinter_engine_sel {
 	NON_DEINTERLACER = 0,

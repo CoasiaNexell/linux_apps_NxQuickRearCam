@@ -16,7 +16,6 @@
 
 #define POLL_TIMEOUT_MS		(2000)
 
-
 class NX_CCommand : protected CNX_Thread
 {
 public:
@@ -29,9 +28,6 @@ public:
 
 	//  Implementation Pure Virtual Function
 	virtual void  ThreadProc();
-
-	// static NX_CCommand *GetInstance();
-	// static NX_CCommand *m_pSingleTone;
 
 private:
 	//
@@ -146,23 +142,6 @@ void  NX_CCommand::ThreadProc()
 }
 
 //
-//
-//	Make Singletone Instance
-//
-//
-// NX_CCommand *NX_CCommand::m_pSingleTone = NULL;
-
-// NX_CCommand *NX_CCommand::GetInstance()
-// {
-// 	if( NULL == m_pSingleTone )
-// 	{
-// 		m_pSingleTone = new NX_CCommand();
-// 	}
-// 	return m_pSingleTone;
-// }
-
-
-//
 //		External Interface
 //
 void* NX_GetCommandHandle()
@@ -174,8 +153,6 @@ void* NX_GetCommandHandle()
 
 int32_t NX_StartCommandService(void *pObj, char *m_pCtrlFileName)
 {
-	//NX_CCommand *pInst = (NX_CCommand *)NX_CCommand::GetInstance();
-	//NX_CCommand *pInst = new NX_CCommand();
 	NX_CCommand *pInst = (NX_CCommand *)pObj;
 
 	pInst->StartService(m_pCtrlFileName);
@@ -198,12 +175,10 @@ void NX_StopCommandService(void *pObj, char *m_pCtrlFileName)
 
 	close( fd_status );
 
-	//NX_CCommand *pInst = (NX_CCommand *)NX_CCommand::GetInstance();
 }
 
 void NX_RegisterCommandEventCallBack(void *pObj, void (*callback)( int32_t))
 {
-	//NX_CCommand *pInst = (NX_CCommand *)NX_CCommand::GetInstance();
 	NX_CCommand *pInst = (NX_CCommand*)pObj;
 	pInst->RegEventCallback( callback );
 }

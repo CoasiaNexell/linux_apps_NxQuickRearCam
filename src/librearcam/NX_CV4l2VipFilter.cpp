@@ -430,7 +430,7 @@ int32_t NX_CV4l2VipFilter::Init( void )
 
 			NX_MapVideoMemory(m_hVideoMemory[i]);
 
-			memset(m_hVideoMemory[i]->pBuffer[0], 0x0, m_hVideoMemory[i]->size[0]);
+			//memset(m_hVideoMemory[i]->pBuffer[0], 0x0, m_hVideoMemory[i]->size[0]);
 		}
 
 		for( int32_t i=0; i<NUM_BUFFER ; i++ )
@@ -582,7 +582,7 @@ void NX_CV4l2VipFilter::ThreadProc( void )
 
 			if(getFirstFrame == false)
 			{
-				printf("[QuickRearCam] Get First Frame\n");
+				//printf("[QuickRearCam] Get First Frame\n");
 				getFirstFrame = true;
 			}
 

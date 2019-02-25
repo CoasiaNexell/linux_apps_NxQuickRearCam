@@ -163,13 +163,13 @@ static void cbBackGearStatus( void *pObj, int32_t iStatus )
 
 	change_backgear_status = 1;
 
-	if(backgear_status)
-	{
-		printf("[QuickRearCam] : BackGear Detected\n");
-	}
-	else{
-		printf("[QuickRearCam] : BackGear Released\n");
-	}
+	// if(backgear_status)
+	// {
+	// 	printf("[QuickRearCam] : BackGear Detected\n");
+	// }
+	// else{
+	// 	printf("[QuickRearCam] : BackGear Released\n");
+	// }
 }
 
 //----------------------------------------------------------------------------
@@ -227,6 +227,7 @@ int32_t main( int argc, char **argv )
 	int32_t pgl_en = 1;
 	int32_t lcd_w = 1920;
 	int32_t lcd_h = 720;
+	int32_t m_iRearCamStatus = STATUS_STOP;
 
 
 	while ((c = getopt(argc, argv, optstr)) != -1) {
@@ -412,12 +413,10 @@ int32_t main( int argc, char **argv )
 	pgl_dsp_info.crtcId 		= crtcId;
 	pgl_dsp_info.m_iDspX 		= 0;
 	pgl_dsp_info.m_iDspY		= 0;
-	// pgl_dsp_info.m_iDspWidth  	= 1024;
-	// pgl_dsp_info.m_iDspHeight 	= 600;
 	pgl_dsp_info.m_iDspWidth  	= lcd_w;
 	pgl_dsp_info.m_iDspHeight 	= lcd_h;
 
-	pgl_dsp_info.m_iNumBuffer   = 3;
+	pgl_dsp_info.m_iNumBuffer   = 1;
 	pgl_dsp_info.uDrmFormat 	= DRM_FORMAT_ARGB8888;
 	//------------------------------------------------------------------
 #ifdef CHECK_TIME
@@ -499,15 +498,14 @@ int32_t main( int argc, char **argv )
 	bool	m_bPGLDraw = 0;
 	//-------------------------------------------------------------------
 
-	if(backgear_enable == true)	 //in case that is applied backgear detecting
+	if(backgear_enable == true)	 //the case that is applied backgear detecting
 	{
 		while(!m_bExitLoop)
 		{
 			if(change_backgear_status == 1 && received_stop_cmd == false)
 			{
-				if(backgear_status == NX_BACKGEAR_DETECTED)
+				if(backgear_status == NX_BACKGEAR_DETECTED && m_iRearCamStatus == STATUS_STOP)
 				{
-					printf("-----------------BackGear Detected\n");
 					iStartTime = now_ms();
 					//-------------QuickRearCam init---------------------------
 					NX_QuickRearCamInit( &vip_info, &dsp_info, &deinter_info);
@@ -533,6 +531,7 @@ int32_t main( int argc, char **argv )
 
 					//-------------QuickRaerCam Start-------------------------
 					NX_QuickRearCamStart();
+					m_iRearCamStatus = STATUS_RUN;
 					//--------------------------------------------------------
 
 					m_bPGLDraw = true;   //setting flag for drawing parking guide line when detected backgear
@@ -540,23 +539,22 @@ int32_t main( int argc, char **argv )
 				}
 				else
 				{
-					printf("-----------------BackGear not Detected\n");
-					m_bPGLDraw = false;	 //setting flag for not drawing parking guide line when released backgear
+					if(backgear_status == NX_BACKGEAR_NOTDETECTED && m_iRearCamStatus == STATUS_RUN)
+					{
+						m_bPGLDraw = false;	 //setting flag for not drawing parking guide line when released backgear
 
-					//---------RGB drawing(parking guide line) Deinit
-					m_pPGLDraw->Deinit();
-					//------------------------------------------------------
+						//---------RGB drawing(parking guide line) Deinit
+						m_pPGLDraw->Deinit();
+						//------------------------------------------------------
 
-					//----------QuickRearCam Deinit-------------------------
-					NX_QuickRearCamDeInit();
-					//------------------------------------------------------
-
-					usleep(50000);
-
+						//----------QuickRearCam Deinit-------------------------
+						NX_QuickRearCamDeInit();
+						//------------------------------------------------------
+						usleep(50000);
+						m_iRearCamStatus = STATUS_STOP;
+					}
 				}
-
 				change_backgear_status = 0;
-
 			}
 
 			if(backgear_status == NX_BACKGEAR_NOTDETECTED && received_stop_cmd == true)
@@ -598,12 +596,13 @@ int32_t main( int argc, char **argv )
 					{
 						pgl_buf_idx = 0;
 					}
+
+					m_bPGLDraw = false;		//Just once drawing PGL when detected backgear.
+									//If you want to draw PGL at rear-time, this line has to be diabled.
 				}
-
 			}
-
 		}
-	}else  ////in case that isn't applied backgear detecting
+	}else  //the case that isn't applied backgear detecting
 	{
 		//-----------------QuickRearCam Init---------------------------
 		NX_QuickRearCamInit( &vip_info, &dsp_info, &deinter_info );
@@ -644,8 +643,6 @@ int32_t main( int argc, char **argv )
 			// ARGB data and the way that fill the buffer, can be different way with bellow.
 			pBuf = (uint32_t *)m_pglMemInfo.pBuffer;
 
-
-
 			for(int32_t i=0; i<PGL_H_LINE_NUM; i++)
 			{
 				HorizontalLine(pBuf, &m_HLine_Info[i]);
@@ -667,7 +664,6 @@ int32_t main( int argc, char **argv )
 			usleep(300000);   //for drawing interval
 		}
 		//-------------------------------------------------------------
-
 	}
 
 	//------------backgear detection service stop---------------------
@@ -684,7 +680,6 @@ int32_t main( int argc, char **argv )
 	//---------------------------------------------------------------
 
 	//-----------Stop Command Service -------------------------------
-	//NX_StopCommandService(STATUS_CTRL_FILE_PATH);
 	NX_StopCommandService(m_pCmdHandle, STOP_COMMAND_CTRL_FILE_PATH);
 
 	return 0;

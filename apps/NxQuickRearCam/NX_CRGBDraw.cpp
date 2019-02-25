@@ -92,7 +92,7 @@ int32_t NX_CRGBDraw::Init(NX_RGB_DRAW_INFO *pInfo)
 		m_MemInfo[i].mem_size = ALIGN(mem_size, m_DspInfo.m_iDspWidth * 4);
 		m_MemInfo[i].pBuffer = pRGBData[i]->pBuffer;
 
-		memset(m_MemInfo[i].pBuffer, 0, mem_size);
+		//memset(m_MemInfo[i].pBuffer, 0, mem_size);
 	}
 
 	return 0;
