@@ -27,7 +27,9 @@
 extern "C" {
 #endif
 
+/*#define NOT_USED*/
 enum {
+#ifndef NOT_USED
 	nx_sensor_subdev = 0,
 	nx_clipper_subdev,
 	nx_decimator_subdev,
@@ -35,24 +37,40 @@ enum {
 	nx_clipper_video,
 	nx_decimator_video,
 	nx_mpegts_video,
+#else
+	nx_clipper_video = 0,
+	nx_decimator_video,
+#endif
 	nx_v4l2_max
 };
 
+struct nx_v4l2_frame_info {
+	uint32_t index;
+	uint32_t width;
+	uint32_t height;
+	uint32_t interval[2];
+};
+
 int nx_v4l2_open_device(int type, int module);
-int nx_v4l2_cleanup(void);
+void nx_v4l2_cleanup(void);
 bool nx_v4l2_is_mipi_camera(int module);
+bool nx_v4l2_is_interlaced_camera(int module);
 int nx_v4l2_link(bool link, int module, int src_type, int src_pad,
 		 int sink_type, int sink_pad);
+int nx_v4l2_set_fmt(int fd, uint32_t f, uint32_t w, uint32_t h,
+		uint32_t num_planes, uint32_t strides[], uint32_t sizes[]);
+#ifndef NOT_USED
 int nx_v4l2_set_format(int fd, int type, uint32_t w, uint32_t h,
-			   uint32_t format);
+		       uint32_t format);
 int nx_v4l2_set_format_with_field(int fd, int type, uint32_t w, uint32_t h,
 				uint32_t format, uint32_t field);
+#endif
 int nx_v4l2_get_format(int fd, int type, uint32_t *w, uint32_t *h,
-			   uint32_t *format);
+		       uint32_t *format);
 int nx_v4l2_set_crop(int fd, int type, uint32_t x, uint32_t y, uint32_t w,
-			 uint32_t h);
+		     uint32_t h);
 int nx_v4l2_get_crop(int fd, int type, uint32_t *x, uint32_t *y, uint32_t *w,
-			 uint32_t *h);
+		     uint32_t *h);
 int nx_v4l2_set_ctrl(int fd, int type, uint32_t ctrl_id, int value);
 int nx_v4l2_get_ctrl(int fd, int type, uint32_t ctrl_id, int *value);
 int nx_v4l2_set_ext_ctrl(int fd, uint32_t ctrl_id, void *arg);
@@ -69,18 +87,26 @@ int nx_v4l2_set_parm(int fd, int type, struct v4l2_streamparm *parm);
 
 /* API for mmap type */
 int nx_v4l2_set_format_mmap(int fd, int type, uint32_t w, uint32_t h,
-				uint32_t format);
+			    uint32_t format);
 int nx_v4l2_set_crop_mmap(int fd, int type, uint32_t x, uint32_t y, uint32_t w,
 			  uint32_t h);
 int nx_v4l2_reqbuf_mmap(int fd, int type, int count);
 int nx_v4l2_qbuf_mmap(int fd, int type, int index);
 int nx_v4l2_dqbuf_mmap(int fd, int type, int *index);
 int nx_v4l2_dqbuf_mmap_with_timestamp(int fd, int type, int *index,
-					  struct timeval *timeval);
+				      struct timeval *timeval);
 int nx_v4l2_streamon_mmap(int fd, int type);
 int nx_v4l2_streamoff_mmap(int fd, int type);
 int nx_v4l2_query_buf_mmap(int fd, int type, int index,
 			   struct v4l2_buffer *v4l2_buf);
+
+int nx_v4l2_get_framesize(int fd, struct nx_v4l2_frame_info *f);
+int nx_v4l2_get_frameinterval(int fd, struct nx_v4l2_frame_info *f, int minOrMax);
+
+char *nx_v4l2_get_video_path(int type, uint32_t module);
+void print_all_nx_v4l2_entry(void);
+void nx_v4l2_enumerate(void);
+void nx_v4l2_print_all_video_entry(void);
 
 #ifdef __cplusplus
 }
