@@ -78,6 +78,8 @@ public:
 
 	int32_t V4l2SensorGetStatus();
 	int32_t	V4l2SensorSetMux(int value);
+	
+	void GetResolution(int32_t type, int32_t module, int32_t *width, int32_t *height );
 
 private:
 	int32_t	V4l2CameraInit();

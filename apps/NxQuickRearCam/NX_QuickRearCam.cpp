@@ -179,9 +179,6 @@ static int32_t received_stop_cmd;
 
 static void cbQuickRearCamCommand( int32_t command )
 {
-	char buf[64];
-	int32_t len;
-
 	printf("cbQuickRearCamCommand : Command : %d , gear_status : %d\n", command, backgear_status);
 
 	if(command == STOP)
@@ -229,6 +226,7 @@ int32_t main( int argc, char **argv )
 	int32_t lcd_h = 720;
 	int32_t m_iRearCamStatus = STATUS_STOP;
 
+	bool m_bSetResolution = false;
 
 	while ((c = getopt(argc, argv, optstr)) != -1) {
 		args++;
@@ -270,6 +268,7 @@ int32_t main( int argc, char **argv )
 		case 'r' :  // camera resolution
 			arg = optarg;
 			sscanf(arg, "%dx%d", &cam_width, &cam_height);
+			m_bSetResolution = true;
 			NxDbgMsg( NX_DBG_INFO, "[QuickRearCam] camera resolution : %dx%d\n", cam_width, cam_height );
 			break;
 		case 'd' :  //deinterlace engine index
@@ -309,7 +308,7 @@ int32_t main( int argc, char **argv )
 		case 'R':  //display resolution
 			arg = optarg;
 			sscanf(arg, "%dx%d", &dp_w, &dp_h);
-			NxDbgMsg( NX_DBG_INFO, "[QuickRearCam] display position : %dx%d\n", dp_x, dp_y );
+			NxDbgMsg( NX_DBG_INFO, "[QuickRearCam] display position : %dx%d\n", dp_w, dp_h );
 			break;
 		case 'P':  //Parking Guide Line Drawing
 			pgl_en = atoi(optarg);
@@ -326,6 +325,12 @@ int32_t main( int argc, char **argv )
 		default:
 			break;
 		}
+	}
+
+	if(m_bSetResolution == false)
+	{
+		cam_width = 0;
+		cam_height = 0;
 	}
 
 	if(backgear_enable == false)
@@ -387,6 +392,7 @@ int32_t main( int argc, char **argv )
 	dsp_info.iDspY			= dp_y;
 	dsp_info.iDspWidth 		= dp_w;
 	dsp_info.iDspHeight		= dp_h;
+	dsp_info.iPglEn			= pgl_en;
 
 	// dsp_info.iPlaneId_PGL	= rgbPlaneId;
 	// dsp_info.uDrmFormat_PGL = DRM_FORMAT_ARGB8888;
@@ -511,21 +517,25 @@ int32_t main( int argc, char **argv )
 					NX_QuickRearCamInit( &vip_info, &dsp_info, &deinter_info);
 					//--------------------------------------------------------
 
-					//-------RGB Draw Init(for drawing parking guide line)----
-					m_pPGLDraw->Init(&pgl_dsp_info);
-
-					//-------Fill color residual region-----------------------
-					if(pgl_dsp_info.m_iDspWidth != dsp_info.iDspWidth)
+					if(pgl_en == 1)
 					{
-						m_pPGLDraw->FillColorBackGround(pgl_dsp_info.m_iDspWidth,
-													(pgl_dsp_info.m_iDspWidth-dsp_info.iDspWidth)>>1,
-													pgl_dsp_info.m_iDspHeight,
-													0, 0, ARGB_COLOR_BLACK);
-						m_pPGLDraw->FillColorBackGround(pgl_dsp_info.m_iDspWidth,
-													(pgl_dsp_info.m_iDspWidth-dsp_info.iDspWidth)>>1,
-													pgl_dsp_info.m_iDspHeight,
-													(pgl_dsp_info.m_iDspWidth+dsp_info.iDspWidth)>>1, 0,
-													ARGB_COLOR_BLACK);
+						//-------RGB Draw Init(for drawing parking guide line)----
+						m_pPGLDraw->Init(&pgl_dsp_info);
+
+						//-------Fill color residual region-----------------------
+						if(pgl_dsp_info.m_iDspWidth != dsp_info.iDspWidth)
+						{
+							m_pPGLDraw->FillColorBackGround(pgl_dsp_info.m_iDspWidth,
+														(pgl_dsp_info.m_iDspWidth-dsp_info.iDspWidth)>>1,
+														pgl_dsp_info.m_iDspHeight,
+														0, 0, ARGB_COLOR_BLACK);
+							m_pPGLDraw->FillColorBackGround(pgl_dsp_info.m_iDspWidth,
+														(pgl_dsp_info.m_iDspWidth-dsp_info.iDspWidth)>>1,
+														pgl_dsp_info.m_iDspHeight,
+														(pgl_dsp_info.m_iDspWidth+dsp_info.iDspWidth)>>1, 0,
+														ARGB_COLOR_BLACK);
+						}
+						//--------------------------------------------------------
 					}
 					//--------------------------------------------------------
 
@@ -544,7 +554,10 @@ int32_t main( int argc, char **argv )
 						m_bPGLDraw = false;	 //setting flag for not drawing parking guide line when released backgear
 
 						//---------RGB drawing(parking guide line) Deinit
-						m_pPGLDraw->Deinit();
+						if(pgl_en == 1)
+						{
+							m_pPGLDraw->Deinit();
+						}
 						//------------------------------------------------------
 
 						//----------QuickRearCam Deinit-------------------------
@@ -608,22 +621,25 @@ int32_t main( int argc, char **argv )
 		NX_QuickRearCamInit( &vip_info, &dsp_info, &deinter_info );
 		//-------------------------------------------------------------
 
-		//--------------- RGB Draw Init(for parking guide line)--------
-		m_pPGLDraw->Init(&pgl_dsp_info);
-		//-------------------------------------------------------------
-
-		//-------Fill color residual region-----------------------
-		if(pgl_dsp_info.m_iDspWidth != dsp_info.iDspWidth)
+		if(pgl_en == 1)
 		{
-			m_pPGLDraw->FillColorBackGround(pgl_dsp_info.m_iDspWidth,
-										(pgl_dsp_info.m_iDspWidth-dsp_info.iDspWidth)>>1,
-										pgl_dsp_info.m_iDspHeight,
-										0, 0, ARGB_COLOR_BLACK);
-			m_pPGLDraw->FillColorBackGround(pgl_dsp_info.m_iDspWidth,
-										(pgl_dsp_info.m_iDspWidth-dsp_info.iDspWidth)>>1,
-										pgl_dsp_info.m_iDspHeight,
-										(pgl_dsp_info.m_iDspWidth+dsp_info.iDspWidth)>>1, 0,
-										ARGB_COLOR_BLACK);
+			//--------------- RGB Draw Init(for parking guide line)--------
+			m_pPGLDraw->Init(&pgl_dsp_info);
+			//-------------------------------------------------------------
+
+			//-------Fill color residual region-----------------------
+			if(pgl_dsp_info.m_iDspWidth != dsp_info.iDspWidth)
+			{
+				m_pPGLDraw->FillColorBackGround(pgl_dsp_info.m_iDspWidth,
+											(pgl_dsp_info.m_iDspWidth-dsp_info.iDspWidth)>>1,
+											pgl_dsp_info.m_iDspHeight,
+											0, 0, ARGB_COLOR_BLACK);
+				m_pPGLDraw->FillColorBackGround(pgl_dsp_info.m_iDspWidth,
+											(pgl_dsp_info.m_iDspWidth-dsp_info.iDspWidth)>>1,
+											pgl_dsp_info.m_iDspHeight,
+											(pgl_dsp_info.m_iDspWidth+dsp_info.iDspWidth)>>1, 0,
+											ARGB_COLOR_BLACK);
+			}
 		}
 
 		//----------------QuickRearCam Start---------------------------
@@ -635,31 +651,33 @@ int32_t main( int argc, char **argv )
 		while(1)
 		{
 			if(pgl_en == 1)
-			//get buffer address for rgb data
-			m_pPGLDraw->GetMemInfo(&m_pglMemInfo, pgl_buf_idx);
-			//--------------------------------------------------------
-
-			//---------------fill the buffer for rendering parking guide line----------
-			// ARGB data and the way that fill the buffer, can be different way with bellow.
-			pBuf = (uint32_t *)m_pglMemInfo.pBuffer;
-
-			for(int32_t i=0; i<PGL_H_LINE_NUM; i++)
 			{
-				HorizontalLine(pBuf, &m_HLine_Info[i]);
-				VerticalLine(pBuf, &m_VLine_Info[i*2]);
-				VerticalLine(pBuf, &m_VLine_Info[i*2+1]);
-			}
+				//get buffer address for rgb data
+				m_pPGLDraw->GetMemInfo(&m_pglMemInfo, pgl_buf_idx);
+				//--------------------------------------------------------
 
-			//-----------------------------------------------------------------------
+				//---------------fill the buffer for rendering parking guide line----------
+				// ARGB data and the way that fill the buffer, can be different way with bellow.
+				pBuf = (uint32_t *)m_pglMemInfo.pBuffer;
 
-			//------------ARGB data rendering-----------------------------------
-			m_pPGLDraw->Render(pgl_buf_idx);
-			//------------------------------------------------------------------
+				for(int32_t i=0; i<PGL_H_LINE_NUM; i++)
+				{
+					HorizontalLine(pBuf, &m_HLine_Info[i]);
+					VerticalLine(pBuf, &m_VLine_Info[i*2]);
+					VerticalLine(pBuf, &m_VLine_Info[i*2+1]);
+				}
 
-			pgl_buf_idx++;
-			if(pgl_buf_idx >= pgl_dsp_info.m_iNumBuffer)
-			{
-				pgl_buf_idx = 0;
+				//-----------------------------------------------------------------------
+
+				//------------ARGB data rendering-----------------------------------
+				m_pPGLDraw->Render(pgl_buf_idx);
+				//------------------------------------------------------------------
+
+				pgl_buf_idx++;
+				if(pgl_buf_idx >= pgl_dsp_info.m_iNumBuffer)
+				{
+					pgl_buf_idx = 0;
+				}
 			}
 			usleep(300000);   //for drawing interval
 		}

@@ -32,9 +32,6 @@
 #define NX_FILTER_ID		"NX_FILTER_VIDEO_RENDERER"
 #define DRM_MODE_OBJECT_PLANE  0xeeeeeeee
 
-// #ifdef DRAW_PARKING_LINE
-// extern unsigned int parkingline_center_1024x600[];
-// #endif
 
 #define STREAM_CAPTURE	0
 
@@ -74,8 +71,8 @@ NX_CVideoRenderFilter::NX_CVideoRenderFilter()
 	, m_hThread( 0x00 )
 	, m_bThreadRun( false )
 	, m_bPause( true )
-	, m_plBufferId(0)
 	, m_pPrvSample( NULL )
+	, m_plBufferId(0)
 	, getFirstFrame(false)
 {
 	SetFilterId( NX_FILTER_ID );
@@ -192,9 +189,6 @@ int32_t NX_CVideoRenderFilter::Stop( void )
 		m_pInputPin->ResetSignal();
 		pthread_join( m_hThread, NULL );
 
-// #ifdef DRAW_PARKING_LINE
-// 		NX_FreeMemory(pParkingLineData);
-// #endif
 		Deinit();
 
 		m_bRun = false;
@@ -292,18 +286,12 @@ int32_t NX_CVideoRenderFilter::SetConfig( NX_DISPLAY_INFO *pDspInfo )
 	m_DspInfo.dspSrcRect.left		= pDspInfo->dspSrcRect.left;
 	m_DspInfo.dspSrcRect.top		= pDspInfo->dspSrcRect.top;
 	m_DspInfo.dspSrcRect.right		= pDspInfo->dspSrcRect.right;
-	m_DspInfo.dspSrcRect.bottom		= pDspInfo->dspSrcRect.bottom		;
+	m_DspInfo.dspSrcRect.bottom		= pDspInfo->dspSrcRect.bottom;
 	m_DspInfo.dspDstRect.left		= pDspInfo->dspDstRect.left;
 	m_DspInfo.dspDstRect.top		= pDspInfo->dspDstRect.top;
 	m_DspInfo.dspDstRect.right		= pDspInfo->dspDstRect.right;
-	m_DspInfo.dspDstRect.bottom		= pDspInfo->dspDstRect.bottom	;
-
-// #ifdef 	DRAW_PARKING_LINE
-// 	m_DspInfo.planeId_PGL			= pDspInfo->planeId_PGL;
-// 	m_DspInfo.drmFormat_PGL			= pDspInfo->drmFormat_PGL;
-// 	m_DspInfo.width_PGL				= pDspInfo->width_PGL;
-// 	m_DspInfo.height_PGL			= pDspInfo->height_PGL;
-// #endif
+	m_DspInfo.dspDstRect.bottom		= pDspInfo->dspDstRect.bottom;
+	m_DspInfo.pglEnable			= pDspInfo->pglEnable;
 
 #ifdef ANDROID_SURF_RENDERING
 	m_pAndroidRender = pAndroidRender;
@@ -323,13 +311,6 @@ int32_t NX_CVideoRenderFilter::Init( /*NX_DISPLAY_INFO *pDspInfo*/ )
 
 	m_pInputPin->AllocateBuffer( MAX_INPUT_NUM );
 
-// #ifdef DRAW_PARKING_LINE
-// 	pParkingLineData = NX_AllocateMemory(m_DspInfo.width_PGL*m_DspInfo.height_PGL*sizeof(unsigned int), 4096);
-// 	NX_MapMemory(pParkingLineData);
-
-//     memcpy(pParkingLineData->pBuffer, parkingline_center_1024x600, 1024*600*(sizeof(unsigned int)));
-
-//  #endif
 #ifndef ANDROID_SURF_RENDERING
 	hDrmFd = drmOpen( "nexell", NULL );
 
@@ -354,7 +335,10 @@ int32_t NX_CVideoRenderFilter::Init( /*NX_DISPLAY_INFO *pDspInfo*/ )
 #ifdef UI_OVERLAY_APP
 	DspVideoSetPriority(2);
 #else
-	DspVideoSetPriority(1);
+	if(m_DspInfo.pglEnable == 1)
+		DspVideoSetPriority(1);
+	else
+		DspVideoSetPriority(0);	
 #endif
 
 #else
@@ -415,35 +399,6 @@ int32_t NX_CVideoRenderFilter::Render( NX_CSample *pSample )
 	bufferIdx = pSample->GetIndex();
 
 #ifndef ANDROID_SURF_RENDERING
-// #ifdef DRAW_PARKING_LINE
-// 	if(m_plBufferId == 0)
-// 	{
-// 		uint32_t handles[4] = { 0, };
-// 		uint32_t pitches[4] = { 0, };
-// 		uint32_t offsets[4] = { 0, };
-
-// 		pitches[0] = 4096;
-// 		pitches[1] = 0;
-// 		pitches[2] = 0;
-// 		pitches[3] = 0;
-
-// 		offsets[0] = 0;
-// 		offsets[1] = 0;
-// 		offsets[2] = 0;
-// 		offsets[3] = 0;
-
-// 		handles[0] = handles[1] = handles[2] = handles[3] = ImportGemFromFlink( m_DspInfo.drmFd, pParkingLineData->flink);
-
-// 		if (drmModeAddFB2(m_DspInfo.drmFd, m_DspInfo.width_PGL, m_DspInfo.height_PGL, m_DspInfo.drmFormat_PGL,
-// 			handles, pitches, offsets, &m_plBufferId, 0)) {
-// 				fprintf(stderr, "failed to add fb: %s\n", strerror(errno));
-// 		}
-
-// 		err = drmModeSetPlane( m_DspInfo.drmFd, m_DspInfo.planeId_PGL, m_DspInfo.ctrlId, m_plBufferId, 0,
-// 						m_DspInfo.dspDstRect.left, m_DspInfo.dspDstRect.top, m_DspInfo.dspDstRect.right, m_DspInfo.dspDstRect.bottom,
-// 				m_DspInfo.dspSrcRect.left << 16, m_DspInfo.dspSrcRect.top << 16, m_DspInfo.dspSrcRect.right << 16, m_DspInfo.dspSrcRect.bottom << 16 );
-// 	 }
-// #endif
 
 	if(m_BufferId[bufferIdx] == 0)
 	{

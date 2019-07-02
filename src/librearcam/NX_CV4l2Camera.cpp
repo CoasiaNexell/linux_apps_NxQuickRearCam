@@ -530,3 +530,9 @@ int32_t NX_CV4l2Camera::AddVideoMemory( NX_VID_MEMORY_INFO *pVidMem )
 	return 0;
 }
 
+
+//------------------------------------------------------------------------------
+void NX_CV4l2Camera::GetResolution(int32_t type, int32_t module, int32_t *width, int32_t *height )
+{
+	nx_v4l2_get_resolution(type, module, width, height);
+}

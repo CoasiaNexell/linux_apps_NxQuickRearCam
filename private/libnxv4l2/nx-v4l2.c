@@ -119,6 +119,13 @@ static void print_nx_v4l2_entry(struct nx_v4l2_entry *e, int i)
 		printf("devnode\t\t:\t%s\n", e->devnode);
 		printf("is_mipi\t\t:\t%d\n", e->is_mipi);
 		printf("interlaced\t:\t%d\n", e->interlaced);
+		printf("list_count\t:\t%d\n", e->list_count);
+
+		for(int i = 0; i< e->list_count ; i++)
+		{
+			printf("%d\t : width - %d\t height - %d\t\n", i, e->lists[i].width, e->lists[i].height);
+		}
+
 	}
 }
 
@@ -207,10 +214,9 @@ static int get_sensor_info(char *name, int *module)
 static struct nx_v4l2_entry *find_v4l2_entry_by_name(char *name)
 {
 	int type;
-	int module, i;
+	int module;
 	char type_name[DEVNAME_SIZE] = {0, };
 	char sensor_name[DEVNAME_SIZE] = {0, };
-	struct nx_v4l2_entry *e;
 
 	memset(type_name, 0, DEVNAME_SIZE);
 	memset(sensor_name, 0, DEVNAME_SIZE);
@@ -788,7 +794,6 @@ int nx_v4l2_qbuf(int fd, int type, int plane_num, int index, int *fds,
 int nx_v4l2_qbuf_mmap(int fd, int type, int index)
 {
 	struct v4l2_buffer v4l2_buf;
-	int i;
 
 	if (get_type_category(type) == type_category_subdev)
 		return -EINVAL;
@@ -954,7 +959,6 @@ int nx_v4l2_streamoff_mmap(int fd, int type)
 int nx_v4l2_query_buf_mmap(int fd, int type, int index,
 			   struct v4l2_buffer *v4l2_buf)
 {
-	int ret;
 
 	if (get_type_category(type) == type_category_subdev)
 		return -EINVAL;
@@ -969,7 +973,6 @@ int nx_v4l2_query_buf_mmap(int fd, int type, int index,
 
 int nx_v4l2_set_parm(int fd, int type, struct v4l2_streamparm *parm)
 {
-	uint32_t buf_type;
 	parm->type = get_buf_type(type);
 	return ioctl(fd, VIDIOC_S_PARM, parm);
 }
@@ -1094,3 +1097,17 @@ char *nx_v4l2_get_video_path(int type, uint32_t module)
 	return NULL;
 }
 
+
+void nx_v4l2_get_resolution(int type, int module, int* width, int* height)
+{
+	struct nx_v4l2_entry_cache *cache = &_nx_v4l2_entry_cache;
+	struct nx_v4l2_entry *entry;
+
+	if (!cache->cached)
+		enum_all_v4l2_devices();
+	
+	entry = &cache->entries[type][module];
+
+	*width = entry->lists[0].width;
+	*height = entry->lists[0].height;
+}

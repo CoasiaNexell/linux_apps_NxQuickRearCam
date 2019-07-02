@@ -39,7 +39,6 @@
 #include "NX_CAndroidRenderer.h"
 #endif
 
-//#define DRAW_PARKING_LINE
 
 typedef struct DSP_IMG_RECT {
 	int32_t		left;
@@ -62,12 +61,8 @@ typedef struct NX_DISPLAY_INFO {
 	DSP_IMG_RECT 	dspSrcRect;	// source image's crop region
 	DSP_IMG_RECT	dspDstRect;	// target display rect
 
-// #ifdef DRAW_PARKING_LINE
-// 	uint32_t		planeId_PGL;
-// 	int32_t			drmFormat_PGL;
-// 	int32_t			width_PGL;
-// 	int32_t			height_PGL;
-// #endif
+	int32_t			pglEnable; // pgl drawing enable
+
 	void *pNativeWindow;
 } NX_DISPLAY_INFO;
 
@@ -200,12 +195,8 @@ private:
 
 #ifdef ANDROID_SURF_RENDERING
 	NX_CAndroidRenderer *m_pAndroidRender;
-	//NX_VID_MEMORY_HANDLE *hVideoMemory;
 #endif
 
-// #ifdef DRAW_PARKING_LINE
-// 	NX_MEMORY_HANDLE pParkingLineData;
-// #endif
 private:
 	NX_CVideoRenderFilter (const NX_CVideoRenderFilter &Ref);
 	NX_CVideoRenderFilter &operator=(const NX_CVideoRenderFilter &Ref);

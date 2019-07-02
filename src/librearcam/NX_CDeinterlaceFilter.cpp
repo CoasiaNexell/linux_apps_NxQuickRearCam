@@ -267,7 +267,7 @@ int32_t NX_CDeinterlaceFilter::Run( void )
 	}
 
 	NxDbgMsg( NX_DBG_VBS, "%s()--\n", __FUNCTION__ );
-	return 0;
+	return ret;
 }
 
 //------------------------------------------------------------------------------

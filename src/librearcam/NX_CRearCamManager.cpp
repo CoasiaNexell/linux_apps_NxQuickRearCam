@@ -32,15 +32,15 @@
 
 //------------------------------------------------------------------------------
 NX_CRearCamManager::NX_CRearCamManager()
-	: m_pEventNotifier		( NULL )
-	, m_pV4l2VipFilter		( NULL )
+	: NotifyCallbackFunc	( NULL )
+	, mRearCamStatus	(0)
+	, m_pEventNotifier	( NULL )
+	, m_pV4l2VipFilter	( NULL )
 	, m_pDeinterlaceFilter	( NULL )
 	, m_pVideoRenderFilter	( NULL )
-	, NotifyCallbackFunc	( NULL )
 #ifdef ANDROID_SURF_RENDERING
 	, m_pAndroidRenderer	( NULL )
 #endif
-	, mRearCamStatus		(0)
 {
 }
 
@@ -61,6 +61,36 @@ int32_t NX_CRearCamManager::Init( NX_REARCAM_INFO *pInfo , DISPLAY_INFO *pDspInf
 	NX_DISPLAY_INFO dspInfo;
 	NX_DEINTERLACE_INFO deinterInfo;
 
+	//
+	//	Create Instance
+	//
+	m_pRefClock			= new NX_CRefClock();
+	m_pEventNotifier	= new NX_CEventNotifier();
+
+#ifdef ANDROID_SURF_RENDERING
+	if(pDspInfo->m_pNativeWindow)
+	{
+		m_pAndroidRenderer = new NX_CAndroidRenderer((ANativeWindow*) pDspInfo->m_pNativeWindow);
+	}
+#endif
+	m_pVideoRenderFilter= new NX_CVideoRenderFilter();
+
+	if( pInfo->iType == CAM_TYPE_VIP )
+	{
+		m_pV4l2VipFilter		= new NX_CV4l2VipFilter();
+	}
+
+	if( deinterInfo.engineSel != NON_DEINTERLACER)
+	{
+		m_pDeinterlaceFilter 		= new NX_CDeinterlaceFilter();
+	}
+
+	if( m_pV4l2VipFilter		) m_pV4l2VipFilter		->SetRefClock( m_pRefClock );
+
+	//
+	//	Set Notifier
+	//
+	if( m_pV4l2VipFilter		) m_pV4l2VipFilter		->SetEventNotifier( m_pEventNotifier );
 
 	memset( &videoInfo, 0x00, sizeof(videoInfo) );
 	memset( &dspInfo, 0x00, sizeof(dspInfo));
@@ -98,17 +128,10 @@ int32_t NX_CRearCamManager::Init( NX_REARCAM_INFO *pInfo , DISPLAY_INFO *pDspInf
 	dspInfo.dspSrcRect.bottom	= pDspInfo->iCropY + pDspInfo->iCropHeight;
 	dspInfo.dspDstRect.left		= pDspInfo->iDspX;
 	dspInfo.dspDstRect.top		= pDspInfo->iDspY;
-	// dspInfo.dspDstRect.right		= pDspInfo->iDspX + pDspInfo->iDspWidth;
-	// dspInfo.dspDstRect.bottom	= pDspInfo->iDspY + pDspInfo->iDspHeight;
 	dspInfo.dspDstRect.right		= pDspInfo->iDspWidth;
 	dspInfo.dspDstRect.bottom		= pDspInfo->iDspHeight;
+	dspInfo.pglEnable				= pDspInfo->iPglEn;
 
-// #ifdef DRAW_PARKING_LINE
-// 	dspInfo.planeId_PGL			= pDspInfo->iPlaneId_PGL;
-// 	dspInfo.drmFormat_PGL		= pDspInfo->uDrmFormat_PGL;
-// 	dspInfo.width_PGL			= pDspInfo->iDspWidth;
-// 	dspInfo.height_PGL			= pDspInfo->iDspHeight;
-// #endif
 
 	dspInfo.pNativeWindow		= pDspInfo->m_pNativeWindow;
 
@@ -117,37 +140,26 @@ int32_t NX_CRearCamManager::Init( NX_REARCAM_INFO *pInfo , DISPLAY_INFO *pDspInf
 	deinterInfo.height			= pDeinterInfo->iHeight;
 	deinterInfo.engineSel		= pDeinterInfo->iEngineSel;
 	deinterInfo.corr			= pDeinterInfo->iCorr;
-
-	//
-	//	Create Instance
-	//
-	m_pRefClock			= new NX_CRefClock();
-	m_pEventNotifier	= new NX_CEventNotifier();
-
-#ifdef ANDROID_SURF_RENDERING
-	if(pDspInfo->m_pNativeWindow)
+	
+	//get video resolution
+	if(videoInfo.iWidth == 0 || videoInfo.iHeight == 0)
 	{
-		m_pAndroidRenderer = new NX_CAndroidRenderer((ANativeWindow*) pDspInfo->m_pNativeWindow);
-	}
-#endif
-	m_pVideoRenderFilter= new NX_CVideoRenderFilter();
+		m_pV4l2VipFilter->GetResolution(nx_clipper_video, videoInfo.iModule, &videoInfo.iWidth, &videoInfo.iHeight);
+		NxDbgMsg( NX_DBG_ERR, "%s()--frame_width : %d, frame_height : %d\n", __FUNCTION__ , videoInfo.iWidth, videoInfo.iHeight );
 
-	if( pInfo->iType == CAM_TYPE_VIP )
-	{
-		m_pV4l2VipFilter		= new NX_CV4l2VipFilter();
-	}
-
-	if( deinterInfo.engineSel != NON_DEINTERLACER)
-	{
-		m_pDeinterlaceFilter 		= new NX_CDeinterlaceFilter();
+		videoInfo.iCropWidth 		= videoInfo.iWidth;
+		videoInfo.iCropHeight 		= videoInfo.iHeight;
+		videoInfo.iOutWidth			= videoInfo.iWidth;
+		videoInfo.iOutHeight 		= videoInfo.iHeight;
+		dspInfo.width 				= videoInfo.iWidth;
+		dspInfo.height 				= videoInfo.iHeight;
+		dspInfo.dspSrcRect.right 	= pDspInfo->iCropX + videoInfo.iWidth;
+		dspInfo.dspSrcRect.bottom 	= pDspInfo->iCropY + videoInfo.iHeight;
+		deinterInfo.width 			= videoInfo.iWidth;
+		deinterInfo.height 			= videoInfo.iHeight;
 	}
 
-	if( m_pV4l2VipFilter		) m_pV4l2VipFilter		->SetRefClock( m_pRefClock );
 
-	//
-	//	Set Notifier
-	//
-	if( m_pV4l2VipFilter		) m_pV4l2VipFilter		->SetEventNotifier( m_pEventNotifier );
 
 	//
 	//	Set Configuration
@@ -284,7 +296,7 @@ int32_t NX_CRearCamManager::Start( void )
 	mRearCamStatus = REAR_CAM_STATUS_RUNNING;
 
 	NxDbgMsg( NX_DBG_VBS, "%s()--\n", __FUNCTION__ );
-	return 0;
+	return ret;
 }
 
 //------------------------------------------------------------------------------

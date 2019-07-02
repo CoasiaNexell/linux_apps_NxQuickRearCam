@@ -61,6 +61,8 @@ public:
 public:
 	virtual void 	ProcessEvent( uint32_t iEventCode, void *pData, uint32_t iDataSize );
 
+private:
+	void (*NotifyCallbackFunc)( uint32_t iEventCode, void *pData, uint32_t iDataSize );
 
 private:
 	NX_CRearCamManager();
@@ -86,8 +88,6 @@ private:
 
 	NX_CMutex		m_hLock;
 
-private:
-	void (*NotifyCallbackFunc)( uint32_t iEventCode, void *pData, uint32_t iDataSize );
 
 private:
 	NX_CRearCamManager (const NX_CRearCamManager &Ref);

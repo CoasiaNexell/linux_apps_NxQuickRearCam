@@ -563,8 +563,8 @@ class NX_CSample
 {
 public:
 	NX_CSample()
-	: m_pOwner( NULL )
-	, m_iRefCount( 0 )
+	: m_iRefCount( 0 )
+	, m_pOwner( NULL )
 	, m_iMediaType( 0 )
 	, m_pBuf( NULL )
 	, m_iBufSize( 0 )

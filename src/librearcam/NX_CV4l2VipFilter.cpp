@@ -61,15 +61,15 @@ NX_CV4l2VipFilter::NX_CV4l2VipFilter()
 	: m_pOutputPin( NULL )
 	, m_hThread( 0x00 )
 	, m_bThreadRun( false )
+	, m_bPause(true)
+	, getFirstFrame(false)
 	, m_pV4l2Camera( NULL )
 	, m_pReleaseQueue( NULL )
 	, m_bCapture( false )
 	, m_iCaptureQuality( 100 )
+	, m_iBufferIdx(-1)
 	, m_pFileName( NULL )
 	, FileNameCallbackFunc( NULL )
-	, m_iBufferIdx(-1)
-	, m_bPause(true)
-	, getFirstFrame(false)
 {
 	SetFilterId( NX_FILTER_ID );
 
@@ -224,7 +224,7 @@ int32_t NX_CV4l2VipFilter::Run( void )
 	}
 
 	NxDbgMsg( NX_DBG_VBS, "%s()--\n", __FUNCTION__ );
-	return 0;
+	return ret;
 }
 
 //------------------------------------------------------------------------------
@@ -560,7 +560,6 @@ void NX_CV4l2VipFilter::VipQueueBuffer( int32_t bufIndex )
 void NX_CV4l2VipFilter::ThreadProc( void )
 {
 	int32_t bufIdx = -1;
-	int32_t prevBufIdx = -1;
 
 #if DISPLAY_FPS
 	double iStartTime = 0;
@@ -579,7 +578,6 @@ void NX_CV4l2VipFilter::ThreadProc( void )
 		m_pV4l2Camera->DequeueBuffer(&bufIdx);
 
 		{
-
 			if(getFirstFrame == false)
 			{
 				//printf("[QuickRearCam] Get First Frame\n");
@@ -649,6 +647,12 @@ void *NX_CV4l2VipFilter::ThreadStub( void *pObj )
 	}
 
 	return (void*)0xDEADDEAD;
+}
+
+//------------------------------------------------------------------------------
+void NX_CV4l2VipFilter::GetResolution(int32_t type, int32_t module, int32_t *width, int32_t *height)
+{
+	m_pV4l2Camera->GetResolution(type, module, width, height);
 }
 
 

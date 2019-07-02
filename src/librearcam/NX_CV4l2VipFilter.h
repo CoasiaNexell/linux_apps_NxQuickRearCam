@@ -48,6 +48,8 @@ public:
 	virtual int32_t Stop( void );
 	virtual int32_t Pause( int32_t );
 
+	void GetResolution(int32_t type, int32_t module, int32_t *width, int32_t *height);
+
 
 #ifdef ANDROID_SURF_RENDERING
 	virtual int32_t SetConfig( NX_MEDIA_INFO *pInfo , NX_CAndroidRenderer *pAndroidRender);

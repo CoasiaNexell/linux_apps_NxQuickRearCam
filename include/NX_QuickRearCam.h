@@ -73,7 +73,9 @@ typedef struct tagDISPLAY_INFO{
 	int32_t		iDspHeight;
 
 	int32_t 	iPlaneId_PGL;   // parking line rendering plane ID
-	int32_t     uDrmFormat_PGL;  // parking line drm data format
+	int32_t		uDrmFormat_PGL;  // parking line drm data format
+
+	int32_t 	iPglEn;			//PGL Drawing Enable
 
 	void*    m_pNativeWindow;
 

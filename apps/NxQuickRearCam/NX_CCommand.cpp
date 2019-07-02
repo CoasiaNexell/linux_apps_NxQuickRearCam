@@ -121,7 +121,7 @@ void  NX_CCommand::ThreadProc()
 		}
 		else
 		{
-			int i, read_size;
+			int read_size;
 
 			if( poll_fds.revents & POLLIN )
 			{

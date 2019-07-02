@@ -60,7 +60,6 @@ TARGET		:= libnxrearcam.a
 CFLAGS		+= -fPIC
 CPPFLAGS	+= -fPIC -Wall
 CPPFLAGS 	+= -O3 $(INCLUDES) $(LDFLAGS) $(LIBS) -static -pthread
-#CPPFLAGS    += -DDRAW_PARKING_LINE
 CPPFLAGS 	+= -DTHUNDER_DEINTERLACE_TEST
 
 SRCS = $(OBJS:.o=.cpp)
