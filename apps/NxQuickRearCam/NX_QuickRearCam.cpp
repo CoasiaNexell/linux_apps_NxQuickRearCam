@@ -614,6 +614,7 @@ int32_t main( int argc, char **argv )
 									//If you want to draw PGL at rear-time, this line has to be diabled.
 				}
 			}
+			usleep(50000);
 		}
 	}else  //the case that isn't applied backgear detecting
 	{
