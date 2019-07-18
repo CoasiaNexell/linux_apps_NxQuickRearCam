@@ -1,58 +1,61 @@
-LOCAL_PATH := $(call my-dir)
+LOCAL_PATH		:= $(call my-dir)
 
 include $(CLEAR_VARS)
-
-
 
 #########################################################################
 #																		#
 #								Sources									#
 #																		#
 #########################################################################
-LOCAL_SRC_FILES := \
-	merge.c \
-	merge_arm.s \
-	algo_basic.c \
-	algo_x.c \
-	nx_deinterlace.c
+LOCAL_C_INCLUDES        += \
+	external/libdrm \
+	hardware/nexell/s5pxx18/gralloc	\
+	device/nexell/library/nx-video-api/src \
+	$(LOCAL_PATH)/../common \
+	$(LOCAL_PATH)/../../include \
+	$(LOCAL_PATH)/../../include/drm \
+	$(LOCAL_PATH)
 
 #########################################################################
 #																		#
 #								Includes								#
 #																		#
 #########################################################################
-LOCAL_C_INCLUDES := \
-	$(LOCAL_PATH)/./include \
-	$(LOCAL_PATH)/../../include \
-	$(LOCAL_PATH)
+LOCAL_SRC_FILES			:=  \
+	NX_CV4l2Camera.cpp \
+	NX_CV4l2VipFilter.cpp \
+	NX_CDeinterlaceFilter.cpp \
+	NX_CVideoRenderFilter.cpp \
+	nxp_video_alloc_drm.c \
 
-LOCAL_C_INCLUDES += \
-	hardware/nexell/s5pxx18/gralloc
+#BackGear Detection
+LOCAL_SRC_FILES			+= \
+	NX_CGpioControl.cpp \
+	NX_CBackgearDetect.cpp \
 
-#########################################################################
-#																		#
-#								Library									#
-#																		#
-#########################################################################
-LOCAL_LDFLAGS +=
+#Utils
+LOCAL_SRC_FILES			+= \
+	../common/NX_DbgMsg.cpp \
+
+# Manager
+LOCAL_SRC_FILES			+= \
+	NX_CRearCamManager.cpp \
 
 #########################################################################
 #																		#
 #								Build optios							#
 #																		#
 #########################################################################
-LOCAL_CFLAGS += -DCAN_COMPILE_ARM -D__ARM_NEON__
-LOCAL_CFLAGS += -DUSE_ION_ALLOCATOR
-
+LOCAL_CFLAGS	+= -DTHUNDER_DEINTERLACE_TEST
 
 #########################################################################
 #																		#
 #								Target									#
 #																		#
 #########################################################################
-LOCAL_MODULE := libnxdeinterlace
+LOCAL_MODULE		:= libnxrearcam
+LOCAL_MODULE_PATH	:= $(LOCAL_PATH)
 
-LOCAL_MODULE_TAGS := optional
+LOCAL_MODULE_TAGS	:= optional
 
 include $(BUILD_STATIC_LIBRARY)
-#include $(BUILD_SHARED_LIBRARY)
