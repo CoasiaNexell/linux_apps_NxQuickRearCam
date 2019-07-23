@@ -114,6 +114,7 @@ void NX_CBackgearDetect::RegEventCallback( void *pAppData, void (*cbFunc)(void *
 
 void NX_CBackgearDetect::StartService( int32_t nGpio, int32_t nChkDelay, int32_t iDetectDelay )
 {
+	(void)iDetectDelay;
 	m_bExitLoop = false;
 
 	pthread_mutex_lock(&m_hGpioMutex);

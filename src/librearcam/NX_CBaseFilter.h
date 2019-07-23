@@ -323,9 +323,10 @@ public:
 		m_FilterInfo = *pInfo;
 	}
 
-	virtual void	GetFilterInfo( NX_FILTER_INFO **ppInfo )
+	virtual void	GetFilterInfo( NX_FILTER_INFO *ppInfo )
 	{
-		*ppInfo = &m_FilterInfo;
+		(void)ppInfo;
+		//ppInfo = &m_FilterInfo;
 	}
 
 	virtual void	SetMediaInfo( NX_MEDIA_INFO *pInfo )

@@ -159,6 +159,7 @@ static int32_t backgear_status;
 static int32_t change_backgear_status;
 static void cbBackGearStatus( void *pObj, int32_t iStatus )
 {
+	(void)pObj;
 	backgear_status  = iStatus ? NX_BACKGEAR_NOTDETECTED : NX_BACKGEAR_DETECTED;
 
 	change_backgear_status = 1;

@@ -336,7 +336,7 @@ int32_t NX_CGpioControl::SetEdge( int32_t iEdge )
 		return -1;
 	}
 
-	int32_t len;
+	int32_t len = 0;
 	if( iEdge == GPIO_EDGE_NONE )			len = snprintf( buf, sizeof(buf), "none" );
 	else if( iEdge == GPIO_EDGE_FALLING )	len = snprintf( buf, sizeof(buf), "falling" );
 	else if( iEdge == GPIO_EDGE_RIGING )	len = snprintf( buf, sizeof(buf), "rising" );
