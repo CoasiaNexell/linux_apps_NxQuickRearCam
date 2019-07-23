@@ -24,10 +24,10 @@
 
 #include <stdint.h>
 
-// #ifdef ANDROID
-// #include <android/native_window.h>
-// #include <android/native_window_jni.h>
-// #endif
+#ifdef ANDROID
+#include <android/native_window.h>
+#include <android/native_window_jni.h>
+#endif
 
 typedef struct _NX_REARCAM_INFO {
 	int32_t iType;

@@ -73,7 +73,7 @@ static int drm_command_write_read(int fd, uint32_t command_index,
  */
 static int alloc_gem(int drm_fd, int size, int flags)
 {
-	struct nx_drm_gem_create arg = {0,0,0,0};
+	struct nx_drm_gem_create arg = { 0, };
 	int ret;
 
 	arg.size = (uint32_t)size;
@@ -93,7 +93,7 @@ static int alloc_gem(int drm_fd, int size, int flags)
 
 static int gem_sync(int drm_fd, int gem_fd, int size)
 {
-	struct nx_drm_gem_create arg = { 0, 0, 0 ,0};
+	struct nx_drm_gem_create arg = { 0, };
 	int ret;
 
 	arg.size = (uint32_t)size;
@@ -112,7 +112,7 @@ static int gem_sync(int drm_fd, int gem_fd, int size)
 
 static void free_gem(int drm_fd, int gem)
 {
-	struct drm_gem_close arg = { 0, 0, 0 ,0};
+	struct drm_gem_close arg = {0, };
 
 	arg.handle = gem;
 	drm_ioctl(drm_fd, DRM_IOCTL_GEM_CLOSE, &arg);
@@ -124,7 +124,7 @@ static void free_gem(int drm_fd, int gem)
 static int gem_to_dmafd(int drm_fd, int gem_fd)
 {
 	int ret;
-	struct drm_prime_handle arg = { 0, 0, 0 ,0};
+	struct drm_prime_handle arg = {0, };
 
 	arg.handle = gem_fd;
 	ret = drm_ioctl(drm_fd, DRM_IOCTL_PRIME_HANDLE_TO_FD, &arg);
@@ -136,7 +136,7 @@ static int gem_to_dmafd(int drm_fd, int gem_fd)
 
 static uint32_t get_flink_name(int fd, int gem)
 {
-	struct drm_gem_flink arg = { 0, 0};
+	struct drm_gem_flink arg = { 0, };
 
 	arg.handle = gem;
 	if (drm_ioctl(fd, DRM_IOCTL_GEM_FLINK, &arg)) {
@@ -148,7 +148,7 @@ static uint32_t get_flink_name(int fd, int gem)
 
 static uint32_t gem_from_flink(int fd, uint32_t flink_name)
 {
-	struct drm_gem_open arg = { 0, 0, 0};
+	struct drm_gem_open arg = { 0, };
 	/* struct nx_drm_gem_info info = { 0, }; */
 
 	arg.name = flink_name;

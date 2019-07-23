@@ -313,7 +313,6 @@ int32_t NX_CDeinterlaceFilter::Stop( void )
 //------------------------------------------------------------------------------
 int32_t NX_CDeinterlaceFilter::Pause( int32_t mbPause )
 {
-	(void)(mbPause);
 	NxDbgMsg( NX_DBG_VBS, "%s()++\n", __FUNCTION__ );
 	NX_CAutoLock lock( &m_hLock );
 
@@ -612,6 +611,7 @@ int32_t NX_CDeinterlaceFilter::Deinterlace( NX_CSample *pInSample, NX_CSample *p
 		int32_t in_strideHeight[3] = {0,};
 		int32_t out_strideWidth[3] = {0,};
 		int32_t out_strideHeight[3] = {0,};
+
 
 		in_strideWidth[0] = hInBuf->stride[0];
 		in_strideWidth[1] = hInBuf->stride[1];
