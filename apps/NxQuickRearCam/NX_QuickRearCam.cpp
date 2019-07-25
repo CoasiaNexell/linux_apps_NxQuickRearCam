@@ -53,8 +53,8 @@
 //#define CHECK_TIME
 //#define AGING_TEST
 
-#define STOP_COMMAND_CTRL_FILE_PATH	"/mnt/rearcam_cmd"
-#define STATUS_CTRL_FILE_PATH		"/mnt/rearcam_status"
+#define STOP_COMMAND_CTRL_FILE_PATH	"/product/rearcam_cmd"
+#define STATUS_CTRL_FILE_PATH		"/product/rearcam_status"
 
 #define PGL_H_LINE_NUM	3
 #define PGL_V_LINE_NUM	6
@@ -159,6 +159,7 @@ static int32_t backgear_status;
 static int32_t change_backgear_status;
 static void cbBackGearStatus( void *pObj, int32_t iStatus )
 {
+	(void)pObj;
 	backgear_status  = iStatus ? NX_BACKGEAR_NOTDETECTED : NX_BACKGEAR_DETECTED;
 
 	change_backgear_status = 1;
@@ -236,7 +237,7 @@ int32_t main( int argc, char **argv )
 			iModule = atoi(arg);
 			NxDbgMsg( NX_DBG_INFO, "[QuickRearCam] Module : %d\n", iModule );
 			break;
-		case 'i':   //module index
+		case 'i':   //interlace
 			arg = optarg;
 			use_inter_cam = atoi(arg);
 			NxDbgMsg( NX_DBG_INFO, "[QuickRearCam] Use interlace cam : %d\n", use_inter_cam );
@@ -444,10 +445,11 @@ int32_t main( int argc, char **argv )
 
 	//-------- for stop command -----------------------------
 	received_stop_cmd = false;
+#ifndef ANDROID
 	m_pCmdHandle = NX_GetCommandHandle ();
 	NX_RegisterCommandEventCallBack (m_pCmdHandle, cbQuickRearCamCommand);
 	NX_StartCommandService(m_pCmdHandle, STOP_COMMAND_CTRL_FILE_PATH);
-
+#endif
 
 	//-------------QuickRearCam init---------------------------
 	if( 0 > NX_QuickRearCamInit( &vip_info, &dsp_info, &deinter_info ) )
@@ -699,7 +701,9 @@ int32_t main( int argc, char **argv )
 	//---------------------------------------------------------------
 
 	//-----------Stop Command Service -------------------------------
+#ifndef ANDROID
 	NX_StopCommandService(m_pCmdHandle, STOP_COMMAND_CTRL_FILE_PATH);
+#endif
 
 	return 0;
 }
