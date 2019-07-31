@@ -28,6 +28,10 @@
 #include <xf86drmMode.h>
 #undef virtual
 
+#ifdef ANDROID
+#include "dp.h"
+#include "dp_common.h"
+#endif
 
 #define NX_FILTER_ID		"NX_FILTER_VIDEO_RENDERER"
 #define DRM_MODE_OBJECT_PLANE  0xeeeeeeee
@@ -276,6 +280,7 @@ int32_t NX_CVideoRenderFilter::SetConfig( NX_DISPLAY_INFO *pDspInfo )
 	NxDbgMsg( NX_DBG_INFO, "%s()++\n", __FUNCTION__ );
 	memset(&m_DspInfo, 0x00, sizeof(m_DspInfo));
 
+	m_DspInfo.connectorId			= pDspInfo->connectorId;
 	m_DspInfo.planeId				= pDspInfo->planeId;
 	m_DspInfo.ctrlId				= pDspInfo->ctrlId;
 	m_DspInfo.width				= pDspInfo->width;
@@ -292,6 +297,9 @@ int32_t NX_CVideoRenderFilter::SetConfig( NX_DISPLAY_INFO *pDspInfo )
 	m_DspInfo.dspDstRect.right		= pDspInfo->dspDstRect.right;
 	m_DspInfo.dspDstRect.bottom		= pDspInfo->dspDstRect.bottom;
 	m_DspInfo.pglEnable			= pDspInfo->pglEnable;
+	m_DspInfo.lcd_width			= pDspInfo->lcd_width;
+	m_DspInfo.lcd_height			= pDspInfo->lcd_height;
+	m_DspInfo.setCrtc			= pDspInfo->setCrtc;
 
 #ifdef ANDROID_SURF_RENDERING
 	m_pAndroidRender = pAndroidRender;
@@ -306,31 +314,115 @@ int32_t NX_CVideoRenderFilter::Init( /*NX_DISPLAY_INFO *pDspInfo*/ )
 {
 	NxDbgMsg( NX_DBG_VBS, "%s()++\n", __FUNCTION__ );
 
-	int32_t hDrmFd = -1;
-
-
 	m_pInputPin->AllocateBuffer( MAX_INPUT_NUM );
 
 #ifndef ANDROID_SURF_RENDERING
-	hDrmFd = drmOpen( "nexell", NULL );
+	m_DspInfo.drmFd = drmOpen( "nexell", NULL );
 
-	if( 0 > hDrmFd )
+	if( 0 > m_DspInfo.drmFd )
 	{
 		NxDbgMsg( NX_DBG_ERR, "Fail, drmOpen().\n" );
 		return -1;
 	}
 
-	drmSetMaster( hDrmFd );
+	drmSetMaster( m_DspInfo.drmFd );
 
-	if( 0 > drmSetClientCap(hDrmFd, DRM_CLIENT_CAP_UNIVERSAL_PLANES, 1) )
+
+	if( 0 > drmSetClientCap(m_DspInfo.drmFd, DRM_CLIENT_CAP_UNIVERSAL_PLANES, 1) )
 	{
-		drmClose( hDrmFd );
+		drmClose( m_DspInfo.drmFd );
 		NxDbgMsg( NX_DBG_ERR, "Fail, drmSetClientCap().\n" );
 		return -1;
 	}
 
-	//m_DspInfo = *pDspInfo;
-	m_DspInfo.drmFd = hDrmFd;
+#ifdef ANDROID
+{
+	if(m_DspInfo.setCrtc == 1)
+	{
+		drmModeRes *resources = NULL;
+		drmModeModeInfo* mode = NULL;
+		drmModeConnector *connector = NULL;
+		int i, area;
+
+		resources = drmModeGetResources(m_DspInfo.drmFd);
+
+		drm_device = dp_device_open(m_DspInfo.drmFd);
+
+		struct dp_plane *plane;
+		uint32_t format;
+		int err;
+		int d_idx = 0, p_idx = 1;
+		default_fb = NULL;
+
+		plane = dp_device_find_plane_by_index(drm_device, d_idx, p_idx);
+		if (!plane) {
+			printf("no overlay plane found\n");
+			return -1;
+		}
+
+		err = dp_plane_supports_format(plane, DRM_FORMAT_ARGB8888);
+		if (!err) {
+			printf("fail : no matching format found\n");
+			return -1;
+		}else
+		{
+			format = DRM_FORMAT_ARGB8888;
+		}
+
+		default_fb = dp_framebuffer_create(drm_device, format, m_DspInfo.lcd_width, m_DspInfo.lcd_height, 0);
+		if (!default_fb) {
+			printf("fail : framebuffer create Fail \n");
+			return -1;
+		}
+
+		err = dp_framebuffer_addfb2(default_fb);
+
+		if (err < 0) {
+			printf("fail : framebuffer add Fail \n");
+			if (default_fb)
+				dp_framebuffer_free(default_fb);
+			return -1;
+		}
+
+		for (i = 0; i < resources->count_connectors; i++) {
+			connector = drmModeGetConnector(m_DspInfo.drmFd, resources->connectors[i]);
+			if ((connector->connector_id == m_DspInfo.connectorId) && (connector->connection == DRM_MODE_CONNECTED)) {
+				/* it's connected, let's use this! */
+				break;
+			}
+
+			drmModeFreeConnector(connector);
+			connector = NULL;
+		}
+
+		if (!connector) {
+			/* we could be fancy and listen for hotplug events and wait for
+			* a connector..
+			*/
+			printf("no connected connector!\n");
+			return -1;
+		}
+
+		for (i = 0, area = 0; i < connector->count_modes; i++) {
+			drmModeModeInfo *current_mode = &connector->modes[i];
+
+			if (current_mode->type & DRM_MODE_TYPE_PREFERRED) {
+				mode = current_mode;
+			}
+
+			int current_area = current_mode->hdisplay * current_mode->vdisplay;
+			if (current_area > area) {
+				mode = current_mode;
+				area = current_area;
+			}
+		}
+
+		int ret = drmModeSetCrtc(m_DspInfo.drmFd, m_DspInfo.ctrlId, default_fb->id, 0, 0,
+				&m_DspInfo.connectorId, 1, mode);
+	}
+}
+#endif
+
 
 #ifdef UI_OVERLAY_APP
 	DspVideoSetPriority(2);
@@ -368,7 +460,13 @@ int32_t NX_CVideoRenderFilter::Deinit( void )
 				m_BufferId[i] = 0;
 			}
 		}
-
+#ifdef ANDROID
+		if(default_fb)
+		{
+			dp_framebuffer_delfb2(default_fb);
+			dp_framebuffer_free(default_fb);
+		}
+#endif
 		if( 0 <= m_DspInfo.drmFd )
 		{
 			drmClose( m_DspInfo.drmFd );

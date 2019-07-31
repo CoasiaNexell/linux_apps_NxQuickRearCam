@@ -11,6 +11,7 @@ LOCAL_C_INCLUDES        += \
 	external/libdrm \
 	hardware/nexell/s5pxx18/gralloc	\
 	device/nexell/library/nx-video-api/src \
+	device/nexell/library/nx-renderer/include \
 	$(LOCAL_PATH)/../common \
 	$(LOCAL_PATH)/../../include \
 	$(LOCAL_PATH)/../../include/drm \

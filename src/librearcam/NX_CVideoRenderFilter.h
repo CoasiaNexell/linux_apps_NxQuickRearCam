@@ -48,6 +48,7 @@ typedef struct DSP_IMG_RECT {
 } DSP_IMG_RECT;
 
 typedef struct NX_DISPLAY_INFO {
+	uint32_t		connectorId;
 	uint32_t		planeId;
 	uint32_t		ctrlId;
 
@@ -60,6 +61,10 @@ typedef struct NX_DISPLAY_INFO {
 
 	DSP_IMG_RECT 	dspSrcRect;	// source image's crop region
 	DSP_IMG_RECT	dspDstRect;	// target display rect
+
+	int32_t			lcd_width;
+	int32_t			lcd_height;
+	int32_t			setCrtc;
 
 	int32_t			pglEnable; // pgl drawing enable
 
@@ -192,6 +197,11 @@ private:
 	NX_CMutex	m_hDspCtrlLock;
 
 	void *pNativeWindow;
+
+#ifdef ANDROID
+	struct dp_framebuffer* default_fb;
+	struct dp_device *drm_device;
+#endif
 
 #ifdef ANDROID_SURF_RENDERING
 	NX_CAndroidRenderer *m_pAndroidRender;

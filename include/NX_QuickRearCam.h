@@ -71,6 +71,9 @@ typedef struct tagDISPLAY_INFO{
 	int32_t		iDspY;
 	int32_t		iDspWidth;
 	int32_t		iDspHeight;
+	int32_t		iLCDWidth;
+	int32_t		iLCDHeight;
+	int32_t		bSetCrtc;
 
 	int32_t 	iPlaneId_PGL;   // parking line rendering plane ID
 	int32_t		uDrmFormat_PGL;  // parking line drm data format

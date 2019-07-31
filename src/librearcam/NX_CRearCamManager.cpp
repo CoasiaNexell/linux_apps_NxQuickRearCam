@@ -115,6 +115,7 @@ int32_t NX_CRearCamManager::Init( NX_REARCAM_INFO *pInfo , DISPLAY_INFO *pDspInf
 		videoInfo.iOutHeight		= pInfo->iOutHeight;
 	}
 
+	dspInfo.connectorId 		= pDspInfo->iConnectorId;
 	dspInfo.planeId				= pDspInfo->iPlaneId;
 	dspInfo.ctrlId				= pDspInfo->iCrtcId;
 	dspInfo.width				= pDspInfo->iSrcWidth;
@@ -131,6 +132,9 @@ int32_t NX_CRearCamManager::Init( NX_REARCAM_INFO *pInfo , DISPLAY_INFO *pDspInf
 	dspInfo.dspDstRect.right		= pDspInfo->iDspWidth;
 	dspInfo.dspDstRect.bottom		= pDspInfo->iDspHeight;
 	dspInfo.pglEnable				= pDspInfo->iPglEn;
+	dspInfo.lcd_width			= pDspInfo->iLCDWidth;
+	dspInfo.lcd_height			= pDspInfo->iLCDHeight;
+	dspInfo.setCrtc				= pDspInfo->bSetCrtc;
 
 
 	dspInfo.pNativeWindow		= pDspInfo->m_pNativeWindow;
@@ -140,7 +144,7 @@ int32_t NX_CRearCamManager::Init( NX_REARCAM_INFO *pInfo , DISPLAY_INFO *pDspInf
 	deinterInfo.height			= pDeinterInfo->iHeight;
 	deinterInfo.engineSel		= pDeinterInfo->iEngineSel;
 	deinterInfo.corr			= pDeinterInfo->iCorr;
-	
+
 	//get video resolution
 	if(videoInfo.iWidth == 0 || videoInfo.iHeight == 0)
 	{

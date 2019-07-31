@@ -210,6 +210,7 @@ int32_t main( int argc, char **argv )
 	int32_t use_inter_cam = 1;
 	int32_t gpioIdx = 71;  //navi-ref:163  Ruibao:43 convergence : 71
 	int32_t backgear_enable = 1;
+	int32_t connectorId = 41;
 	int32_t crtcId = 26;
 	int32_t videoPlaneId = 27;
 	int32_t rgbPlaneId = 18;
@@ -380,6 +381,7 @@ int32_t main( int argc, char **argv )
 	//------------------------------------------------------------------
 
 	//--------display info setting(for redering camera data)---------
+	dsp_info.iConnectorId	= connectorId;
 	dsp_info.iPlaneId		= videoPlaneId;
 	dsp_info.iCrtcId		= crtcId;
 	dsp_info.uDrmFormat		= DRM_FORMAT_YUV420;
@@ -394,7 +396,13 @@ int32_t main( int argc, char **argv )
 	dsp_info.iDspWidth 		= dp_w;
 	dsp_info.iDspHeight		= dp_h;
 	dsp_info.iPglEn			= pgl_en;
-
+	dsp_info.iLCDWidth		= lcd_w;
+	dsp_info.iLCDHeight		= lcd_h;
+#ifndef ANDROID
+	dsp_info.bSetCrtc		= 0;
+#else
+	dsp_info.bSetCrtc		= 1;
+#endif
 	// dsp_info.iPlaneId_PGL	= rgbPlaneId;
 	// dsp_info.uDrmFormat_PGL = DRM_FORMAT_ARGB8888;
 	//------------------------------------------------------------------
@@ -544,6 +552,7 @@ int32_t main( int argc, char **argv )
 					//-------------QuickRaerCam Start-------------------------
 					NX_QuickRearCamStart();
 					m_iRearCamStatus = STATUS_RUN;
+					dsp_info.bSetCrtc		= 0;
 					//--------------------------------------------------------
 
 					m_bPGLDraw = true;   //setting flag for drawing parking guide line when detected backgear

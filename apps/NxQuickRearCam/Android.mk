@@ -36,7 +36,7 @@ LOCAL_SRC_FILES		+=		\
 #########################################################################
 LOCAL_STATIC_LIBRARIES += liblog libdrm
 
-LOCAL_STATIC_LIBRARIES += libnxrearcam libnxdeinterlace libnx_v4l2
+LOCAL_STATIC_LIBRARIES += libnxrearcam libnxdeinterlace libnx_v4l2 libnx_renderer
 
 #LOCAL_LDLIBS = -L$(NX_LIB_TOP) -ldeinterlacer_static
 LOCAL_LDLIBS = $(NX_LIB_TOP)/libdeinterlacer_static.a
