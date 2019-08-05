@@ -337,7 +337,11 @@ int32_t NX_CVideoRenderFilter::Init( /*NX_DISPLAY_INFO *pDspInfo*/ )
 
 #ifdef ANDROID
 {
-	if(m_DspInfo.setCrtc == 1)
+	default_fb = NULL;
+	drmModeCrtcPtr pCrtc = NULL;
+	pCrtc = drmModeGetCrtc(m_DspInfo.drmFd , m_DspInfo.ctrlId);
+
+	if(m_DspInfo.setCrtc == 1 && pCrtc->buffer_id == 0)
 	{
 		drmModeRes *resources = NULL;
 		drmModeModeInfo* mode = NULL;
@@ -352,7 +356,6 @@ int32_t NX_CVideoRenderFilter::Init( /*NX_DISPLAY_INFO *pDspInfo*/ )
 		uint32_t format;
 		int err;
 		int d_idx = 0, p_idx = 1;
-		default_fb = NULL;
 
 		plane = dp_device_find_plane_by_index(drm_device, d_idx, p_idx);
 		if (!plane) {
@@ -449,6 +452,15 @@ int32_t NX_CVideoRenderFilter::Deinit( void )
 	m_pInputPin->FreeBuffer();
 
 #ifndef ANDROID_SURF_RENDERING
+	DspVideoSetPriority(2);
+#ifdef ANDROID
+	if(default_fb)
+	{
+		dp_framebuffer_delfb2(default_fb);
+		dp_framebuffer_free(default_fb);
+		default_fb = NULL;
+	}
+#endif
 	if( m_DspInfo.drmFd > 0 )
 	{
 		// clean up object here
@@ -460,13 +472,6 @@ int32_t NX_CVideoRenderFilter::Deinit( void )
 				m_BufferId[i] = 0;
 			}
 		}
-#ifdef ANDROID
-		if(default_fb)
-		{
-			dp_framebuffer_delfb2(default_fb);
-			dp_framebuffer_free(default_fb);
-		}
-#endif
 		if( 0 <= m_DspInfo.drmFd )
 		{
 			drmClose( m_DspInfo.drmFd );
@@ -475,7 +480,6 @@ int32_t NX_CVideoRenderFilter::Deinit( void )
 		memset( &m_DspInfo, 0, sizeof(m_DspInfo) );
 		m_DspInfo.drmFd = -1;
 	}
-	DspVideoSetPriority(2);
 #endif
 	NxDbgMsg( NX_DBG_VBS, "%s()--\n", __FUNCTION__ );
 	return 0;
