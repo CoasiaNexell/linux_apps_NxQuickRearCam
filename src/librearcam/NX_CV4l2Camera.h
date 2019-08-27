@@ -114,12 +114,8 @@ private:
 	//	Bus
 	int32_t					m_iBusFormat;
 	//	File Descriptor
-	int32_t					m_iSensorFd;
-	int32_t					m_iClipperSubdevFd;
-	int32_t					m_iDecimatorSubdevFd;
 	int32_t					m_iCsiSubdevFd;
 	int32_t					m_iClipperVideoFd;
-	int32_t					m_iDecimatorVideoFd;
 
 	//	External Buffer Information
 	NX_VID_MEMORY_INFO		*m_pMemSlot[MAX_BUF_NUM];
@@ -141,9 +137,8 @@ private:
 
 	void*					m_pVirAddr[MAX_BUF_NUM][NX_MAX_PLANES];
 
-
-
-
+public:
+	uint32_t				m_iMemSize[4];
 
 private:
 	NX_CV4l2Camera (NX_CV4l2Camera &Ref);
