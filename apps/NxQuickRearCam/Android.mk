@@ -60,7 +60,7 @@ LOCAL_STATIC_LIBRARIES += libdeinterlacer_static
 #########################################################################
 LOCAL_MODULE		:= NxQuickRearCam
 LOCAL_MODULE_TAGS	:= optional
-LOCAL_CFLAGS 		:= -DANDROID -static
+LOCAL_CFLAGS 		:= -DANDROID -static -pthread
 LOCAL_MODULE_PATH := $(TARGET_ROOT_OUT_SBIN)
 LOCAL_UNSTRIPPED_PATH := $(TARGET_ROOT_OUT_SBIN_UNSTRIPPED)
 LOCAL_POST_INSTALL_CMD := $(hide) mkdir -p $(TARGET_ROOT_OUT)/sbin

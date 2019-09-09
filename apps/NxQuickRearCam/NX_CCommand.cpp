@@ -50,6 +50,10 @@ private:
 	//	for Callback Function
 	void				(*m_EventCallBack)(int32_t);
 
+#ifdef ANDROID
+	int32_t m_iGotStopCmd;
+#endif
+
 private:
 	NX_CCommand (const NX_CCommand &Ref);
 	NX_CCommand &operator=(const NX_CCommand &Ref);
@@ -88,11 +92,14 @@ void NX_CCommand::StopService()
 	m_bExitLoop = true;
 	Stop();
 	close( fd_cmd );
+	remove(m_pStopCmdFileName);
 }
 
 void  NX_CCommand::ThreadProc()
 {
+#ifndef ANDROID
 	usleep(1500000);   //for mknod after tmpfs load
+	
 
 	if( 0 == access(m_pStopCmdFileName, F_OK))
 	{
@@ -132,12 +139,33 @@ void  NX_CCommand::ThreadProc()
 				if(!strncmp((const char*)rx_buf, "quick_stop", sizeof("quick_stop")))
 				{
 					m_EventCallBack(STOP);
+					m_bExitLoop = 1;
 				}
 
 			}
 		}
 
 	}while( !m_bExitLoop );
+
+#else
+
+	usleep(5000000);
+	m_iGotStopCmd = 0;
+	while(!m_bExitLoop){
+		if( 0 > access(m_pStopCmdFileName, F_OK))
+		{
+			continue;
+		}else
+		{
+			if(m_iGotStopCmd != 1) 
+			{
+				m_EventCallBack(STOP);
+			}
+			m_iGotStopCmd = 1;
+		}
+		usleep(100000);
+	}
+#endif
 
 }
 
@@ -167,6 +195,7 @@ void NX_StopCommandService(void *pObj, char *m_pCtrlFileName)
 
 	pInst->StopService();
 
+#ifndef ANDROID
 	delete pInst;
 
 	fd_status = open(m_pCtrlFileName, O_RDWR);
@@ -174,7 +203,21 @@ void NX_StopCommandService(void *pObj, char *m_pCtrlFileName)
 	write(fd_status, "stopped", sizeof("stopped"));
 
 	close( fd_status );
+#else
+	usleep(1000000);
+	if( 0 == access(m_pCtrlFileName, F_OK))
+	{
+		remove(m_pCtrlFileName);
+	}
 
+	int ret = mknod(m_pCtrlFileName, S_IFIFO | 0666, 0 );
+	printf("================mknod ret : %d  : %s\n", ret, m_pCtrlFileName);
+
+	usleep(30000000);
+
+	remove(m_pCtrlFileName);
+
+#endif
 }
 
 void NX_RegisterCommandEventCallBack(void *pObj, void (*callback)( int32_t))

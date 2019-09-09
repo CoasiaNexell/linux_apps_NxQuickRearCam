@@ -150,6 +150,7 @@ int32_t NX_CGpioControl::Deinit( void )
 		return -1;
 	}
 
+#ifndef ANDROID
 	int32_t fd = open("/sys/class/gpio/unexport", O_WRONLY);
 
 	if( 0 > fd )
@@ -172,7 +173,7 @@ int32_t NX_CGpioControl::Deinit( void )
 	}
 
 	close( fd );
-
+#endif
 	m_iPort		= GPIO_ERROR;
 	m_iDirection= GPIO_DIRECTION_IN;
 	m_iEdge		= GPIO_EDGE_NONE;

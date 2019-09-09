@@ -53,9 +53,13 @@
 //#define CHECK_TIME
 //#define AGING_TEST
 
+#ifndef ANDROID
 #define STOP_COMMAND_CTRL_FILE_PATH	"/product/rearcam_cmd"
 #define STATUS_CTRL_FILE_PATH		"/product/rearcam_status"
-
+#else
+#define STOP_COMMAND_CTRL_FILE_PATH	"/data/data/quickrearcam_cmd"
+#define STATUS_CTRL_FILE_PATH		"/data/data/quickrearcam_status"
+#endif
 #define PGL_H_LINE_NUM	3
 #define PGL_V_LINE_NUM	6
 
@@ -453,11 +457,9 @@ int32_t main( int argc, char **argv )
 
 	//-------- for stop command -----------------------------
 	received_stop_cmd = false;
-#ifndef ANDROID
 	m_pCmdHandle = NX_GetCommandHandle ();
 	NX_RegisterCommandEventCallBack (m_pCmdHandle, cbQuickRearCamCommand);
 	NX_StartCommandService(m_pCmdHandle, STOP_COMMAND_CTRL_FILE_PATH);
-#endif
 
 	//-------------QuickRearCam init---------------------------
 	if( 0 > NX_QuickRearCamInit( &vip_info, &dsp_info, &deinter_info ) )
@@ -712,6 +714,10 @@ int32_t main( int argc, char **argv )
 	//-----------Stop Command Service -------------------------------
 #ifndef ANDROID
 	NX_StopCommandService(m_pCmdHandle, STOP_COMMAND_CTRL_FILE_PATH);
+	printf("----------------- command service stop\n");
+#else
+	NX_StopCommandService(m_pCmdHandle, STATUS_CTRL_FILE_PATH);
+	usleep(5000000);
 #endif
 
 	return 0;
