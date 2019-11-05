@@ -154,14 +154,16 @@ void  NX_CCommand::ThreadProc()
 	while(!m_bExitLoop){
 		if( 0 > access(m_pStopCmdFileName, F_OK))
 		{
+			usleep(100000);
 			continue;
 		}else
 		{
-			if(m_iGotStopCmd != 1) 
+			if(m_iGotStopCmd != 1)
 			{
 				m_EventCallBack(STOP);
 			}
 			m_iGotStopCmd = 1;
+			m_bExitLoop = true;
 		}
 		usleep(100000);
 	}
