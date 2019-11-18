@@ -50,6 +50,8 @@ typedef struct NX_RGB_DRAW_INFO {
 
 	int32_t 	drmFd;
 
+	int32_t 	m_MemDevFd;
+
 }NX_RGB_DRAW_INFO;
 
 typedef struct NX_RGB_DRAW_MEMORY_INFO {

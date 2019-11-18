@@ -131,8 +131,13 @@ int32_t NX_CV4l2Camera::V4l2CameraInit()
 int32_t NX_CV4l2Camera::V4l2OpenDevices()
 {
 	// open devices
-
-	m_iClipperVideoFd = nx_v4l2_open_device(nx_clipper_video, m_iModule);
+	if(m_iCamDevFd < 0)
+	{
+		m_iClipperVideoFd = nx_v4l2_open_device(nx_clipper_video, m_iModule);
+	}else
+	{
+		m_iClipperVideoFd = m_iCamDevFd;
+	}
 
 	if (m_iClipperVideoFd < 0)
 	{
@@ -271,6 +276,7 @@ int32_t NX_CV4l2Camera::Init( NX_VIP_INFO *pInfo )
 	m_bIsMiPi				= 0;
 	m_iCsiSubdevFd			= 0;
 	m_iClipperVideoFd		= 0;
+	m_iCamDevFd				= pInfo->iCamDevFd;
 
 	if(m_bInterlaced == true)
 	{
@@ -336,11 +342,11 @@ void NX_CV4l2Camera::V4l2Deinit()
 		close(m_iCsiSubdevFd);
 		m_iCsiSubdevFd = 1;
 	}
-	if(m_iClipperVideoFd>0)
-	{
-		close(m_iClipperVideoFd);
-		m_iClipperVideoFd = 1;
-	}
+	// if(m_iClipperVideoFd>0)
+	// {
+	// 	close(m_iClipperVideoFd);
+	// 	m_iClipperVideoFd = 1;
+	// }
 }
 
 //------------------------------------------------------------------------------

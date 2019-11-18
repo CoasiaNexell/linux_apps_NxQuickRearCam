@@ -109,11 +109,11 @@ typedef struct
 } NX_VID_MEMORY_INFO, *NX_VID_MEMORY_HANDLE;
 
 //	Nexell Private Memory Allocator
-NX_MEMORY_INFO *NX_AllocateMemory( int size, int align );
+NX_MEMORY_INFO *NX_AllocateMemory( int32_t device_fd, int size, int align );
 void NX_FreeMemory( NX_MEMORY_INFO *pMem );
 
 //	Video Specific Allocator Wrapper
-NX_VID_MEMORY_INFO * NX_AllocateVideoMemory( int width, int height, int32_t planes, uint32_t format, int align , int32_t mem_type);
+NX_VID_MEMORY_INFO * NX_AllocateVideoMemory( int32_t device_fd, int width, int height, int32_t planes, uint32_t format, int align , int32_t mem_type);
 void NX_FreeVideoMemory( NX_VID_MEMORY_INFO *pMem );
 
 int NX_MapMemory( NX_MEMORY_INFO *pMem );

@@ -49,6 +49,7 @@ public:
 	virtual int32_t Pause( int32_t );
 
 	void GetResolution(int32_t type, int32_t module, int32_t *width, int32_t *height);
+	void SetDeviceFD(int32_t cam_dev_fd, int32_t mem_dev_fd);
 
 
 #ifdef ANDROID_SURF_RENDERING
@@ -82,6 +83,8 @@ private:
 	NX_CV4l2VipOutputPin*	m_pOutputPin;
 
 	pthread_t		m_hThread;
+	pthread_attr_t thread_attrs;
+
 	int32_t			m_bThreadRun;
 	int32_t			m_bPause;
 	int32_t 		getFirstFrame;
@@ -98,11 +101,15 @@ private:
 	int32_t			m_iCaptureQuality;
 	int32_t			m_iBufferIdx;
 	char*			m_pFileName;
-	int32_t 			preview_idx;
+	int32_t 		preview_idx;
 
 	int32_t			(*FileNameCallbackFunc)( uint8_t *pBuf, uint32_t iBufSize );
 
 	NX_CSemaphore*		m_pSemV4l2Vip;
+
+
+	int32_t 		m_CamDevFd;
+	int32_t			m_MemDevFd;
 
 #ifdef ANDROID_SURF_RENDERING
 	NX_CAndroidRenderer *m_pAndroidRender;

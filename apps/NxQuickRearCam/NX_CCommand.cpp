@@ -10,24 +10,33 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <string.h>
+#include "NX_ThreadUtils.h"
 
-#include "CNX_BaseClass.h"
 #include "NX_CCommand.h"
+
+#ifdef NX_DTAG
+#undef NX_DTAG
+#endif
+#define NX_DTAG "[NX_CCommand]"
+
+#include <NX_DbgMsg.h>
 
 #define POLL_TIMEOUT_MS		(2000)
 
-class NX_CCommand : protected CNX_Thread
+class NX_CCommand
 {
 public:
 	void RegEventCallback( void (*cbFunc)( int32_t) );
-	void StartService(char *);
+	int32_t StartService(char *);
 	void StopService();
 
 	NX_CCommand();
 	~NX_CCommand();
 
-	//  Implementation Pure Virtual Function
-	virtual void  ThreadProc();
+
+private:
+	static void*	ThreadStub( void *pObj );
+	void 			ThreadProc();
 
 private:
 	//
@@ -50,6 +59,12 @@ private:
 	//	for Callback Function
 	void				(*m_EventCallBack)(int32_t);
 
+	// thread
+	pthread_t	m_hThread;
+	pthread_attr_t thread_attrs;
+
+	int32_t m_bThreadRun;
+
 #ifdef ANDROID
 	int32_t m_iGotStopCmd;
 #endif
@@ -63,6 +78,7 @@ private:
 NX_CCommand::NX_CCommand()
 	:m_bExitLoop ( false )
 	, m_EventCallBack ( NULL )
+	, m_bThreadRun ( false )
 {
 
 }
@@ -78,19 +94,38 @@ void NX_CCommand::RegEventCallback( void (*cbFunc)(int32_t) )
 	m_EventCallBack = cbFunc;
 }
 
-void NX_CCommand::StartService(char *m_pCtrlFileName)
+int32_t NX_CCommand::StartService(char *m_pCtrlFileName)
 {
 	m_bExitLoop = false;
 
 	m_pStopCmdFileName = m_pCtrlFileName;
+	m_bThreadRun = true;
 
-	Start();
+#ifdef ADJUST_THREAD_PRIORITY
+	NX_AdjustThreadPriority(&thread_attrs, SCHED_RR, 50);
+
+	if( 0 > pthread_create( &this->m_hThread, &thread_attrs, this->ThreadStub, this ) ) {
+			NxDbgMsg( NX_DBG_ERR, "Fail, Create Thread.\n" );
+			return -1;
+	}
+#else
+	if( 0 > pthread_create( &this->m_hThread, NULL, this->ThreadStub, this ) ) {
+			NxDbgMsg( NX_DBG_ERR, "Fail, Create Thread.\n" );
+			return -1;
+	}
+#endif
+	return 0;
 }
 
 void NX_CCommand::StopService()
 {
 	m_bExitLoop = true;
-	Stop();
+#ifdef ADJUST_THREAD_PRIORITY
+	NX_ThreadAttributeDestroy(&thread_attrs);
+#endif
+	pthread_join( m_hThread, NULL );
+	m_bThreadRun = false;
+
 	close( fd_cmd );
 	remove(m_pStopCmdFileName);
 }
@@ -99,7 +134,7 @@ void  NX_CCommand::ThreadProc()
 {
 #ifndef ANDROID
 	usleep(1500000);   //for mknod after tmpfs load
-	
+
 
 	if( 0 == access(m_pStopCmdFileName, F_OK))
 	{
@@ -171,6 +206,16 @@ void  NX_CCommand::ThreadProc()
 
 }
 
+//------------------------------------------------------------------------------
+void *NX_CCommand::ThreadStub( void *pObj )
+{
+	if( NULL != pObj ) {
+		((NX_CCommand*)pObj)->ThreadProc();
+	}
+
+	return (void*)0xDEADDEAD;
+}
+
 //
 //		External Interface
 //
@@ -183,10 +228,11 @@ void* NX_GetCommandHandle()
 
 int32_t NX_StartCommandService(void *pObj, char *m_pCtrlFileName)
 {
+	int32_t res;
 	NX_CCommand *pInst = (NX_CCommand *)pObj;
 
-	pInst->StartService(m_pCtrlFileName);
-	return 0;
+	res = pInst->StartService(m_pCtrlFileName);
+	return res;
 }
 
 void NX_StopCommandService(void *pObj, char *m_pCtrlFileName)

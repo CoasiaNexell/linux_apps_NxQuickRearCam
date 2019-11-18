@@ -60,6 +60,8 @@ typedef struct _NX_VIP_INFO
 
 	int32_t		iOutWidth;		//	Decimator width
 	int32_t		iOutHeight;		//	Decimator height
+
+	int32_t		iCamDevFd;
 } NX_VIP_INFO;
 
 class NX_CV4l2Camera
@@ -116,6 +118,8 @@ private:
 	//	File Descriptor
 	int32_t					m_iCsiSubdevFd;
 	int32_t					m_iClipperVideoFd;
+
+	int32_t					m_iCamDevFd;
 
 	//	External Buffer Information
 	NX_VID_MEMORY_INFO		*m_pMemSlot[MAX_BUF_NUM];

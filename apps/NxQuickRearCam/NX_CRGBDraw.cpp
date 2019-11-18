@@ -46,7 +46,6 @@ NX_CRGBDraw::~NX_CRGBDraw(){
 
 }
 
-
 //------------------------------------------------------------------------------
 int32_t NX_CRGBDraw::Init(NX_RGB_DRAW_INFO *pInfo)
 {
@@ -55,24 +54,26 @@ int32_t NX_CRGBDraw::Init(NX_RGB_DRAW_INFO *pInfo)
 
 	memset(&m_DspInfo, 0, sizeof(NX_RGB_DRAW_INFO));
 
-	hDrmFd = drmOpen( "nexell", NULL );
+	if(pInfo->drmFd < 0)
+		m_DspInfo.drmFd = drmOpen( "nexell", NULL );
+	else
+	{
+		m_DspInfo.drmFd = pInfo->drmFd;
+	}
 
-	if( 0 > hDrmFd )
+	if( 0 > m_DspInfo.drmFd )
 	{
 		NxDbgMsg( NX_DBG_ERR, "Fail, drmOpen().\n" );
 		return -1;
 	}
+	drmSetMaster( m_DspInfo.drmFd );
 
-	drmSetMaster( hDrmFd );
-
-	if( 0 > drmSetClientCap(hDrmFd, DRM_CLIENT_CAP_UNIVERSAL_PLANES, 1) )
+	if( 0 > drmSetClientCap(m_DspInfo.drmFd, DRM_CLIENT_CAP_UNIVERSAL_PLANES, 1) )
 	{
-		drmClose( hDrmFd );
+		drmClose( m_DspInfo.drmFd );
 		NxDbgMsg( NX_DBG_ERR, "Fail, drmSetClientCap().\n" );
 		return -1;
 	}
-
-	m_DspInfo.drmFd = hDrmFd;
 
 	m_DspInfo.planeId 	= pInfo->planeId;
 	m_DspInfo.crtcId 	= pInfo->crtcId;
@@ -87,7 +88,7 @@ int32_t NX_CRGBDraw::Init(NX_RGB_DRAW_INFO *pInfo)
 
 	for(int i=0; i<m_DspInfo.m_iNumBuffer; i++)
 	{
-		pRGBData[i] = NX_AllocateMemory(mem_size, m_DspInfo.m_iDspWidth * 4);
+		pRGBData[i] = NX_AllocateMemory(pInfo->m_MemDevFd, mem_size, m_DspInfo.m_iDspWidth * 4);
 		NX_MapMemory(pRGBData[i]);
 		m_MemInfo[i].mem_size = ALIGN(mem_size, m_DspInfo.m_iDspWidth * 4);
 		m_MemInfo[i].pBuffer = pRGBData[i]->pBuffer;
@@ -115,7 +116,7 @@ void NX_CRGBDraw::Deinit( void )
 
 		if( 0 <= m_DspInfo.drmFd )
 		{
-			drmClose( m_DspInfo.drmFd );
+			//drmClose( m_DspInfo.drmFd );
 			m_DspInfo.drmFd = -1;
 		}
 	}

@@ -24,6 +24,7 @@
 #include <nxp_video_alloc.h>
 #include <nx_deinterlace.h>
 #include "NX_CDeinterlaceFilter.h"
+#include "NX_ThreadUtils.h"
 
 #ifdef __cplusplus
 extern "C"{
@@ -58,8 +59,6 @@ extern "C"{
 #define CORR         (3)
 #define BIAS         (8)
 
-#define THREAD_PRIORITY_CHANGE	0
-
 #define TIME_CHECK 	1
 
 #if TIME_CHECK
@@ -79,6 +78,7 @@ NX_CDeinterlaceFilter::NX_CDeinterlaceFilter()
 	, m_bThreadRun( false )
 	, m_bCapture( false )
 	, m_iCaptureQuality( 100 )
+	, m_MemDevFd(-1)
 {
 	SetFilterId( NX_FILTER_ID );
 
@@ -187,13 +187,6 @@ int32_t NX_CDeinterlaceFilter::Run( void )
 	NX_CAutoLock lock( &m_hLock );
 	int ret = 0;
 
-#if THREAD_PRIORITY_CHANGE
-	pthread_attr_t thread_attrs;
-	struct sched_param param;
-	struct sched_param param_res;
-
-#endif
-
 	if( false == m_bRun )
 	{
 		if( m_pInputPin )
@@ -206,52 +199,14 @@ int32_t NX_CDeinterlaceFilter::Run( void )
 			NxDbgMsg( NX_DBG_ERR, "Fail, Init().\n" );
 			return -1;
 		}
-#if THREAD_PRIORITY_CHANGE
-		ret = pthread_attr_init(&thread_attrs);
-		if(ret < 0)
-		{
-			NxDbgMsg( NX_DBG_ERR, "Fail, pthread_attr_init\n" );
-		}
-
-		ret = pthread_attr_setinheritsched(&thread_attrs, PTHREAD_EXPLICIT_SCHED);
-		if(ret < 0)
-		{
-			NxDbgMsg( NX_DBG_ERR, "Fail, pthread_attr_setinheritsched\n" );
-		}
-
-		ret = pthread_attr_setschedpolicy(&thread_attrs, SCHED_RR);
-		//ret = pthread_attr_setschedpolicy(&thread_attrs, SCHED_OTHER);
-
-		if(ret < 0)
-		{
-			NxDbgMsg( NX_DBG_ERR, "Fail, pthread_attr_setschedpolicy\n" );
-		}
-
-		param.__sched_priority = 50;
-
-		ret = pthread_attr_setschedparam(&thread_attrs, &param);
-
-
-		if(ret < 0)
-		{
-			NxDbgMsg( NX_DBG_ERR, "Fail, pthread_attr_setschedparam\n" );
-		}
-
-		ret	= pthread_attr_getschedparam(&thread_attrs, &param_res);
-		NxDbgMsg( NX_DBG_INFO,"ret : %d ======priority : %d\n",ret, param_res.__sched_priority );
-#endif
 		m_bThreadRun = true;
 
-#if THREAD_PRIORITY_CHANGE
+#ifdef ADJUST_THREAD_PRIORITY
+		NX_AdjustThreadPriority(&thread_attrs, SCHED_RR, 50);
+
 		if( 0 > pthread_create( &this->m_hThread, &thread_attrs, this->ThreadStub, this ) ) {
 			NxDbgMsg( NX_DBG_ERR, "Fail, Create Thread.\n" );
 			return -1;
-		}
-
-		pthread_attr_destroy(&thread_attrs);
-		if(ret < 0)
-		{
-			NxDbgMsg( NX_DBG_ERR, "Fail, pthread_attr_destroy\n" );
 		}
 #else
 		if( 0 > pthread_create( &this->m_hThread, NULL, this->ThreadStub, this ) ) {
@@ -354,7 +309,11 @@ void NX_CDeinterlaceFilter::RegFileNameCallback( int32_t (*cbFunc)(uint8_t*, uin
 	NxDbgMsg( NX_DBG_VBS, "%s()--\n", __FUNCTION__ );
 }
 
-
+//------------------------------------------------------------------------------
+void NX_CDeinterlaceFilter::SetDeviceFD(int32_t mem_dev_fd)
+{
+	m_MemDevFd = mem_dev_fd;
+}
 
 //------------------------------------------------------------------------------
 int32_t NX_CDeinterlaceFilter::Init( void )
@@ -362,6 +321,8 @@ int32_t NX_CDeinterlaceFilter::Init( void )
 	NxDbgMsg( NX_DBG_VBS, "%s()++\n", __FUNCTION__ );
 
 	m_pInputPin->AllocateBuffer( MAX_INPUT_NUM );
+
+	m_pOutputPin->SetDeviceFD(m_MemDevFd);
 
 #ifdef ANDROID_SURF_RENDERING
 	m_pOutputPin->AllocateBuffer( MAX_OUTPUT_NUM , m_pAndroidRender  );
@@ -389,6 +350,10 @@ int32_t NX_CDeinterlaceFilter::Init( void )
 int32_t NX_CDeinterlaceFilter::Deinit( void )
 {
 	NxDbgMsg( NX_DBG_VBS, "%s()++\n", __FUNCTION__ );
+
+#ifdef ADJUST_THREAD_PRIORITY
+	NX_ThreadAttributeDestroy(&thread_attrs);
+#endif
 
 	m_pInputPin->Flush();
 	m_pInputPin->FreeBuffer();
@@ -847,6 +812,7 @@ NX_CDeiniterlaceOutputPin::NX_CDeiniterlaceOutputPin()
 	: m_pSampleQueue( NULL )
 	, m_pSemQueue( NULL )
 	, m_iNumOfBuffer( 0 )
+	, m_MemDevFd( -1 )
 {
 
 }
@@ -885,6 +851,12 @@ int32_t NX_CDeiniterlaceOutputPin::GetDeliverySample( NX_CSample **ppSample )
 	return 0;
 }
 
+//------------------------------------------------------------------------------
+void NX_CDeiniterlaceOutputPin::SetDeviceFD( int32_t  mem_dev_fd)
+{
+	m_MemDevFd = mem_dev_fd;
+}
+
 
 #ifndef ALLINEDN
 #define ALLINEDN(X,N)	( (X+N-1) & (~(N-1)) )
@@ -916,7 +888,7 @@ int32_t NX_CDeiniterlaceOutputPin::AllocateBuffer( int32_t iNumOfBuffer )
 
 	for( int32_t i = 0; i < iNumOfBuffer; i++ )
 	{
-		m_hVideoMemory[i] = NX_AllocateVideoMemory( pInfo->iWidth, pInfo->iHeight, pInfo->iNumPlane, DRM_FORMAT_YUV420, 512, NEXELL_BO_DMA_CACHEABLE );
+		m_hVideoMemory[i] = NX_AllocateVideoMemory(m_MemDevFd, pInfo->iWidth, pInfo->iHeight, pInfo->iNumPlane, DRM_FORMAT_YUV420, 512, NEXELL_BO_DMA_CACHEABLE );
 
 		if(pInfo->iNumPlane == 1)
 		{

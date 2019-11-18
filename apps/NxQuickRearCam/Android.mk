@@ -25,6 +25,7 @@ LOCAL_C_INCLUDES +=	\
 	hardware/nexell/s5pxx18/gralloc	\
 	$(NX_INC_TOP) \
 	$(NX_INC_TOP)/drm \
+	$(NX_INC_TOP)/../src/common \
 	$(LOCAL_PATH)
 
 #########################################################################
@@ -37,6 +38,7 @@ LOCAL_SRC_FILES		+=		\
 	NX_CCommand.cpp \
 	NX_CRGBDraw.cpp \
 	NX_QuickRearCam.cpp \
+	../../src/common/NX_ThreadUtils.cpp \
 
 #########################################################################
 #																		#
@@ -60,7 +62,7 @@ LOCAL_STATIC_LIBRARIES += libdeinterlacer_static
 #########################################################################
 LOCAL_MODULE		:= NxQuickRearCam
 LOCAL_MODULE_TAGS	:= optional
-LOCAL_CFLAGS 		:= -DANDROID -static -pthread
+LOCAL_CFLAGS 		:= -DANDROID -static -pthread -DADJUST_THREAD_PRIORITY
 LOCAL_MODULE_PATH := $(TARGET_ROOT_OUT_SBIN)
 LOCAL_UNSTRIPPED_PATH := $(TARGET_ROOT_OUT_SBIN_UNSTRIPPED)
 LOCAL_POST_INSTALL_CMD := $(hide) mkdir -p $(TARGET_ROOT_OUT)/sbin

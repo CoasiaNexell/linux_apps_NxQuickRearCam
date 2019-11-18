@@ -68,7 +68,7 @@ int32_t main( int32_t argc, char *argv[] )
 		for( int32_t i=0 ; i<INPUT_BUFFER_NUM ; i++)
 		{
 			//hInMem[i] = NX_VideoAllocateMemory( 4096, iWidth, iHeight, NX_MEM_MAP_LINEAR, FOURCC_MVS0 );
-			hInMem[i] = NX_AllocateVideoMemory( iWidth, iHeight, iNumPlane, DRM_FORMAT_YUV420, 4096 );
+			hInMem[i] = NX_AllocateVideoMemory(-1,  iWidth, iHeight, iNumPlane, DRM_FORMAT_YUV420, 4096 );
 			if ( 0 == hInMem[i] ) {
 				printf("NX_VideoAllocMemory(64, %d, %d,...) failed. (i=%d)\n", iWidth, iHeight, i);
 				return -1;
@@ -81,7 +81,7 @@ int32_t main( int32_t argc, char *argv[] )
 		for( int32_t i=0 ; i<DEINTERLACE_BUFFER_NUM ; i++ )
 		{
 			//hOutMem[i] = NX_VideoAllocateMemory( 4096, iWidth, iHeight, NX_MEM_MAP_LINEAR, FOURCC_MVS0 );
-			hOutMem[i] = NX_AllocateVideoMemory( iWidth, iHeight, iNumPlane, DRM_FORMAT_YUV420, 4096 );
+			hOutMem[i] = NX_AllocateVideoMemory(-1, iWidth, iHeight, iNumPlane, DRM_FORMAT_YUV420, 4096 );
 			if ( 0 == hOutMem[i] ) {
 				printf("NX_VideoAllocMemory(64, %d, %d,...) failed. (i=%d)\n", iWidth, iHeight, i);
 				return -1;

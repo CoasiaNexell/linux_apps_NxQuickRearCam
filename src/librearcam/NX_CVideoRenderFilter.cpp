@@ -23,6 +23,7 @@
 #include "NX_CVideoRenderFilter.h"
 #include <drm_mode.h>
 #include <drm_fourcc.h>
+#include "NX_ThreadUtils.h"
 #define virtual vir
 #include <xf86drm.h>
 #include <xf86drmMode.h>
@@ -35,7 +36,6 @@
 
 #define NX_FILTER_ID		"NX_FILTER_VIDEO_RENDERER"
 #define DRM_MODE_OBJECT_PLANE  0xeeeeeeee
-
 
 #define STREAM_CAPTURE	0
 
@@ -69,6 +69,7 @@ static double now_ms(void)
 	return 1000.0*res.tv_sec + (double)res.tv_nsec/1e6;
 }
 #endif
+
 //------------------------------------------------------------------------------
 NX_CVideoRenderFilter::NX_CVideoRenderFilter()
 	: m_pInputPin( NULL )
@@ -78,6 +79,7 @@ NX_CVideoRenderFilter::NX_CVideoRenderFilter()
 	, m_pPrvSample( NULL )
 	, m_plBufferId(0)
 	, getFirstFrame(false)
+	, m_DpDevFd(-1)
 {
 	SetFilterId( NX_FILTER_ID );
 
@@ -158,6 +160,8 @@ int32_t NX_CVideoRenderFilter::Run( void )
 	NxDbgMsg( NX_DBG_VBS, "%s()++\n", __FUNCTION__ );
 	NX_CAutoLock lock( &m_hLock );
 
+	int32_t ret = 0;
+
 	if( false == m_bRun )
 	{
 		if( m_pInputPin )
@@ -166,11 +170,20 @@ int32_t NX_CVideoRenderFilter::Run( void )
 		Init();
 
 		m_bThreadRun = true;
+
+#ifdef ADJUST_THREAD_PRIORITY
+		NX_AdjustThreadPriority(&thread_attrs, SCHED_RR, 50);
+
+		if( 0 > pthread_create( &this->m_hThread, &thread_attrs, this->ThreadStub, this ) ) {
+			NxDbgMsg( NX_DBG_ERR, "Fail, Create Thread.\n" );
+			return -1;
+		}
+#else
 		if( 0 > pthread_create( &this->m_hThread, NULL, this->ThreadStub, this ) ) {
 			NxDbgMsg( NX_DBG_ERR, "Fail, Create Thread.\n" );
 			return -1;
 		}
-
+#endif
 		m_bRun = true;
 	}
 
@@ -310,6 +323,12 @@ int32_t NX_CVideoRenderFilter::SetConfig( NX_DISPLAY_INFO *pDspInfo )
 }
 
 //------------------------------------------------------------------------------
+void NX_CVideoRenderFilter::SetDeviceFD(int32_t dp_device_fd)
+{
+	m_DpDevFd = dp_device_fd;
+}
+
+//------------------------------------------------------------------------------
 int32_t NX_CVideoRenderFilter::Init( /*NX_DISPLAY_INFO *pDspInfo*/ )
 {
 	NxDbgMsg( NX_DBG_VBS, "%s()++\n", __FUNCTION__ );
@@ -317,7 +336,13 @@ int32_t NX_CVideoRenderFilter::Init( /*NX_DISPLAY_INFO *pDspInfo*/ )
 	m_pInputPin->AllocateBuffer( MAX_INPUT_NUM );
 
 #ifndef ANDROID_SURF_RENDERING
-	m_DspInfo.drmFd = drmOpen( "nexell", NULL );
+	if(m_DpDevFd < 0)
+	{
+		m_DspInfo.drmFd = drmOpen( "nexell", NULL );
+	}else
+	{
+		m_DspInfo.drmFd = m_DpDevFd;
+	}
 
 	if( 0 > m_DspInfo.drmFd )
 	{
@@ -448,6 +473,10 @@ int32_t NX_CVideoRenderFilter::Deinit( void )
 {
 	NxDbgMsg( NX_DBG_VBS, "%s()++\n", __FUNCTION__ );
 
+#ifdef ADJUST_THREAD_PRIORITY
+	NX_ThreadAttributeDestroy(&thread_attrs);
+#endif
+
 	m_pInputPin->Flush();
 	m_pInputPin->FreeBuffer();
 
@@ -474,7 +503,7 @@ int32_t NX_CVideoRenderFilter::Deinit( void )
 		}
 		if( 0 <= m_DspInfo.drmFd )
 		{
-			drmClose( m_DspInfo.drmFd );
+			//drmClose( m_DspInfo.drmFd );
 			m_DspInfo.drmFd = -1;
 		}
 		memset( &m_DspInfo, 0, sizeof(m_DspInfo) );

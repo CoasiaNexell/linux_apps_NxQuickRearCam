@@ -42,36 +42,34 @@ enum {
 class NX_CRearCamManager
 {
 public:
-	static NX_CRearCamManager* GetManager( void );
-	static void ReleaseManager( void );
+	int32_t Init();
+	int32_t Deinit( void );
+	int32_t Start( void );
+	int32_t Stop( void );
+	int32_t Pause( int32_t mbPause );
+	int32_t GetStatus();
+	int32_t SetDisplayPosition(int32_t x, int32_t y, int32_t w, int32_t h);
+
+	int32_t RegNotifyCallback( void (*cbFunc)(uint32_t, void*, uint32_t) );
+
+	int32_t ChangeDebugLevel( int32_t iLevel );
+
+	int32_t InitRearCamManager( NX_REARCAM_INFO *pInfo, DISPLAY_INFO* p_dspInfo , DEINTERLACE_INFO *pDeinterInfo);
 
 public:
-	virtual int32_t Init( NX_REARCAM_INFO *pInfo, DISPLAY_INFO* p_dspInfo , DEINTERLACE_INFO *pDeinterInfo);
-	virtual int32_t Deinit( void );
-	virtual int32_t Start( void );
-	virtual int32_t Stop( void );
-	virtual int32_t Pause( int32_t mbPause );
-	virtual int32_t GetStatus();
-	virtual int32_t SetDisplayPosition(int32_t x, int32_t y, int32_t w, int32_t h);
-
-	virtual int32_t RegNotifyCallback( void (*cbFunc)(uint32_t, void*, uint32_t) );
-
-	virtual int32_t ChangeDebugLevel( int32_t iLevel );
-
-public:
-	virtual void 	ProcessEvent( uint32_t iEventCode, void *pData, uint32_t iDataSize );
+	void 	ProcessEvent( uint32_t iEventCode, void *pData, uint32_t iDataSize );
 
 private:
 	void (*NotifyCallbackFunc)( uint32_t iEventCode, void *pData, uint32_t iDataSize );
 
-private:
+public:
 	NX_CRearCamManager();
 	~NX_CRearCamManager();
 
 	static int32_t CaptureFileName( uint8_t *pBuf, uint32_t iBufSize );
 
 private:
-	static NX_CRearCamManager* m_pManager;
+//	static NX_CRearCamManager* m_pManager;
 
 	int32_t mRearCamStatus;
 
@@ -82,11 +80,20 @@ private:
 	NX_CDeinterlaceFilter*  m_pDeinterlaceFilter;
 	NX_CVideoRenderFilter*	m_pVideoRenderFilter;
 
+	NX_MEDIA_INFO videoInfo;
+	NX_DISPLAY_INFO dspInfo;
+	NX_DEINTERLACE_INFO deinterInfo;
+
 #ifdef ANDROID_SURF_RENDERING
 	NX_CAndroidRenderer* 	m_pAndroidRenderer;
 #endif
 
 	NX_CMutex		m_hLock;
+
+public:
+	int32_t m_MemDevFd;
+	int32_t m_CamDevFd;
+	int32_t m_DPDevFd;
 
 
 private:

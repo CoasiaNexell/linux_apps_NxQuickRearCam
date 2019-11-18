@@ -29,6 +29,7 @@ OBJS		:=	NX_DbgMsg.o \
 				NX_QuickRearCam.o \
 				NX_CRGBDraw.o \
 				NX_CCommand.o \
+				$(TOPDIR)/../../src/common/NX_ThreadUtils.o \
 
 #########################################################################
 #																		#

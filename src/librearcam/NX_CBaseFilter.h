@@ -993,7 +993,6 @@ private:
 	NX_CEventNotifier &operator=(const NX_CEventNotifier &Ref);
 };
 
-
 #endif	// __cplusplus
 
 #endif	// __NX_CBASEFILTER_H__

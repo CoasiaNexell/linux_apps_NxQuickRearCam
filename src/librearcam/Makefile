@@ -40,6 +40,7 @@ OBJS		+=	NX_CGpioControl.o \
 				NX_CBackgearDetect.o \
 # Utils
 OBJS		+=	../common/NX_DbgMsg.o \
+				../common/NX_ThreadUtils.o \
 
 # Manager
 OBJS		+=	NX_CRearCamManager.o \

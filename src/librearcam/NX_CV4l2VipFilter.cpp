@@ -26,14 +26,13 @@
 #include <nxp_video_alloc.h>
 #include "NX_CV4l2VipFilter.h"
 #include <linux/videodev2.h>
+#include "NX_ThreadUtils.h"
 
 #define NX_FILTER_ID		"NX_FILTER_V4L2_VIP"
 
 // #define NX_DBG_OFF
 
 #define DISPLAY_FPS		0
-
-#define THREAD_PRIORITY_CHANGE	0
 
 ////////////////////////////////////////////////////////////////////////////////
 //
@@ -70,6 +69,8 @@ NX_CV4l2VipFilter::NX_CV4l2VipFilter()
 	, m_iBufferIdx(-1)
 	, m_pFileName( NULL )
 	, FileNameCallbackFunc( NULL )
+	, m_CamDevFd(-1)
+	, m_MemDevFd(-1)
 {
 	SetFilterId( NX_FILTER_ID );
 
@@ -149,12 +150,6 @@ int32_t NX_CV4l2VipFilter::Run( void )
 	NX_CAutoLock lock( &m_hLock );
 	int32_t ret = 0;
 
-#if THREAD_PRIORITY_CHANGE
-	pthread_attr_t thread_attrs;
-	struct sched_param param;
-	struct sched_param param_res;
-#endif
-
 	if( false == m_bRun )
 	{
 		if( m_pOutputPin && m_pOutputPin->IsConnected() )
@@ -165,55 +160,15 @@ int32_t NX_CV4l2VipFilter::Run( void )
 			return -1;
 		}
 
-#if THREAD_PRIORITY_CHANGE
-		ret = pthread_attr_init(&thread_attrs);
-		if(ret < 0)
-		{
-			NxDbgMsg( NX_DBG_ERR, "Fail, pthread_attr_init\n" );
-		}
-
-		ret = pthread_attr_setinheritsched(&thread_attrs, PTHREAD_EXPLICIT_SCHED);
-		if(ret < 0)
-		{
-			NxDbgMsg( NX_DBG_ERR, "Fail, pthread_attr_setinheritsched\n" );
-		}
-
-		ret = pthread_attr_setschedpolicy(&thread_attrs, SCHED_RR);
-		//ret = pthread_attr_setschedpolicy(&thread_attrs, SCHED_OTHER);
-
-		if(ret < 0)
-		{
-			NxDbgMsg( NX_DBG_ERR, "Fail, pthread_attr_setschedpolicy\n" );
-		}
-
-		param.__sched_priority = 50;
-
-		ret = pthread_attr_setschedparam(&thread_attrs, &param);
-
-
-		if(ret < 0)
-		{
-			NxDbgMsg( NX_DBG_ERR, "Fail, pthread_attr_setschedparam\n" );
-		}
-
-		ret	= pthread_attr_getschedparam(&thread_attrs, &param_res);
-		NxDbgMsg( NX_DBG_INFO,"ret : %d ======priority : %d\n",ret, param_res.__sched_priority );
-#endif
-
 		m_bThreadRun = true;
 
-#if THREAD_PRIORITY_CHANGE
+#ifdef ADJUST_THREAD_PRIORITY
+		NX_AdjustThreadPriority(&thread_attrs, SCHED_RR, 50);
+
 		if( 0 > pthread_create( &this->m_hThread, &thread_attrs, this->ThreadStub, this ) ) {
 			NxDbgMsg( NX_DBG_ERR, "Fail, Create Thread.\n" );
 			return -1;
 		}
-
-		pthread_attr_destroy(&thread_attrs);
-		if(ret < 0)
-		{
-			NxDbgMsg( NX_DBG_ERR, "Fail, pthread_attr_destroy\n" );
-		}
-
 #else
 		if( 0 > pthread_create( &this->m_hThread, NULL, this->ThreadStub, this ) ) {
 			NxDbgMsg( NX_DBG_ERR, "Fail, Create Thread.\n" );
@@ -359,7 +314,11 @@ void NX_CV4l2VipFilter::RegFileNameCallback( int32_t (*cbFunc)(uint8_t*, uint32_
 	NxDbgMsg( NX_DBG_VBS, "%s()--\n", __FUNCTION__ );
 }
 
-
+void NX_CV4l2VipFilter::SetDeviceFD(int32_t cam_dev_fd, int32_t mem_dev_fd)
+{
+	m_CamDevFd = cam_dev_fd;
+	m_MemDevFd = mem_dev_fd;
+}
 
 #ifndef ALLINEDN
 #define ALLINEDN(X,N)	( (X+N-1) & (~(N-1)) )
@@ -401,6 +360,8 @@ int32_t NX_CV4l2VipFilter::Init( void )
 	info.iOutWidth		= pInfo->iWidth;
 	info.iOutHeight		= pInfo->iHeight;
 
+	info.iCamDevFd		= m_CamDevFd;
+
 	if(info.bInterlace == true)
 		allocWidth = ALLINEDN(pInfo->iWidth, 128);
 	else
@@ -417,9 +378,9 @@ int32_t NX_CV4l2VipFilter::Init( void )
 		for( int32_t i = 0; i < NUM_BUFFER; i++ )
 		{
 			#ifdef ANDROID_SURF_RENDERING
-			m_hVideoMemory[i] = NX_AllocateVideoMemory( allocWidth, pInfo->iHeight, pInfo->iNumPlane, DRM_FORMAT_YUV420, 512 , 0);
+			m_hVideoMemory[i] = NX_AllocateVideoMemory(m_MemDevFd, allocWidth, pInfo->iHeight, pInfo->iNumPlane, DRM_FORMAT_YUV420, 512 , 0);
 			#else
-			m_hVideoMemory[i] = NX_AllocateVideoMemory( allocWidth, pInfo->iHeight, pInfo->iNumPlane, DRM_FORMAT_YUV420, 512 , NEXELL_BO_DMA_CACHEABLE);
+			m_hVideoMemory[i] = NX_AllocateVideoMemory(m_MemDevFd, allocWidth, pInfo->iHeight, pInfo->iNumPlane, DRM_FORMAT_YUV420, 512 , NEXELL_BO_DMA_CACHEABLE);
 			#endif
 
 			if(info.iNumPlane == 1)
@@ -438,7 +399,7 @@ int32_t NX_CV4l2VipFilter::Init( void )
 			m_pV4l2Camera->AddVideoMemory(m_hVideoMemory[i]);
 		}
 
-		if( 0 > m_pV4l2Camera->Init( &info ) )
+		if( 0 > m_pV4l2Camera->Init( &info ))
 		{
 			delete m_pV4l2Camera;
 			m_pV4l2Camera = NULL;
@@ -491,6 +452,10 @@ int32_t NX_CV4l2VipFilter::Init( void )
 int32_t NX_CV4l2VipFilter::Deinit( void )
 {
 	NxDbgMsg( NX_DBG_VBS, "%s()++\n", __FUNCTION__ );
+
+#ifdef ADJUST_THREAD_PRIORITY
+	NX_ThreadAttributeDestroy(&thread_attrs);
+#endif
 
 	if( m_pV4l2Camera )
 	{

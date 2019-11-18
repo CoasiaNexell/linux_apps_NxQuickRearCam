@@ -73,8 +73,10 @@ static int drm_command_write_read(int fd, uint32_t command_index,
  */
 static int alloc_gem(int drm_fd, int size, int flags)
 {
-	struct nx_drm_gem_create arg = {0,0,0,0};
+	struct nx_drm_gem_create arg;
 	int ret;
+
+	memset(&arg, 0, sizeof(arg));
 
 	arg.size = (uint32_t)size;
 	arg.flags = flags;
@@ -93,8 +95,10 @@ static int alloc_gem(int drm_fd, int size, int flags)
 
 static int gem_sync(int drm_fd, int gem_fd, int size)
 {
-	struct nx_drm_gem_create arg = { 0, 0, 0 ,0};
+	struct nx_drm_gem_create arg;
 	int ret;
+
+	memset(&arg, 0, sizeof(arg));
 
 	arg.size = (uint32_t)size;
 	arg.flags = 0;
@@ -112,7 +116,9 @@ static int gem_sync(int drm_fd, int gem_fd, int size)
 
 static void free_gem(int drm_fd, int gem)
 {
-	struct drm_gem_close arg = { 0, 0, 0 ,0};
+	struct drm_gem_close arg;
+
+	memset(&arg, 0, sizeof(arg));
 
 	arg.handle = gem;
 	drm_ioctl(drm_fd, DRM_IOCTL_GEM_CLOSE, &arg);
@@ -124,7 +130,9 @@ static void free_gem(int drm_fd, int gem)
 static int gem_to_dmafd(int drm_fd, int gem_fd)
 {
 	int ret;
-	struct drm_prime_handle arg = { 0, 0, 0 ,0};
+	struct drm_prime_handle arg;
+
+	memset(&arg, 0, sizeof(arg));
 
 	arg.handle = gem_fd;
 	ret = drm_ioctl(drm_fd, DRM_IOCTL_PRIME_HANDLE_TO_FD, &arg);
@@ -136,7 +144,9 @@ static int gem_to_dmafd(int drm_fd, int gem_fd)
 
 static uint32_t get_flink_name(int fd, int gem)
 {
-	struct drm_gem_flink arg = { 0, 0};
+	struct drm_gem_flink arg;
+
+	memset(&arg, 0, sizeof(arg));
 
 	arg.handle = gem;
 	if (drm_ioctl(fd, DRM_IOCTL_GEM_FLINK, &arg)) {
@@ -148,8 +158,10 @@ static uint32_t get_flink_name(int fd, int gem)
 
 static uint32_t gem_from_flink(int fd, uint32_t flink_name)
 {
-	struct drm_gem_open arg = { 0, 0, 0};
+	struct drm_gem_open arg;
 	/* struct nx_drm_gem_info info = { 0, }; */
+
+	memset(&arg, 0, sizeof(arg));
 
 	arg.name = flink_name;
 	if (drm_ioctl(fd, DRM_IOCTL_GEM_OPEN, &arg)) {
@@ -181,15 +193,24 @@ static int32_t IsContinuousPlanes( uint32_t fourcc )
 
 //
 //	Nexell Memory Allocator Wrapper
-//
-NX_MEMORY_INFO *NX_AllocateMemory( int size, int align )
+
+NX_MEMORY_INFO *NX_AllocateMemory(int32_t device_fd,  int size, int align )
 {
 	int gemFd = -1;
 	int dmaFd = -1;
 	int32_t flags = 0;
 	NX_MEMORY_INFO *pMem;
+	int drmFd;
 
-	int drmFd = open(DRM_DEVICE_NAME, O_RDWR);
+	if(device_fd < 0)
+	{
+		drmFd = open(DRM_DEVICE_NAME, O_RDWR);
+	}else
+	{
+		drmFd  = device_fd;
+	}
+
+
 	if (drmFd < 0)
 		return NULL;
 
@@ -237,7 +258,7 @@ void NX_FreeMemory( NX_MEMORY_INFO *pMem )
 
 		free_gem( pMem->drmFd, pMem->gemFd );
 		close(pMem->dmaFd);
-		close(pMem->drmFd);
+		//close(pMem->drmFd);
 		free( pMem );
 	}
 }
@@ -254,7 +275,7 @@ void NX_FreeMemory( NX_MEMORY_INFO *pMem )
 
 //#include <log/log.h>
 
-NX_VID_MEMORY_INFO * NX_AllocateVideoMemory( int width, int height, int32_t planes, uint32_t format, int align , int32_t mem_type)
+NX_VID_MEMORY_INFO * NX_AllocateVideoMemory(int32_t device_fd, int width, int height, int32_t planes, uint32_t format, int align , int32_t mem_type)
 {
 	int gemFd[NX_MAX_PLANES] = {0, };
 	int dmaFd[NX_MAX_PLANES] = {0, };
@@ -269,9 +290,17 @@ NX_VID_MEMORY_INFO * NX_AllocateVideoMemory( int width, int height, int32_t plan
 
 	NX_VID_MEMORY_INFO *pVidMem;
 
-	int drmFd = open( DRM_DEVICE_NAME, O_RDWR );
-	if (drmFd < 0)
+	int drmFd;
+
+	if(device_fd < 0)
+	{
+		drmFd = open( DRM_DEVICE_NAME, O_RDWR );
+		if (drmFd < 0)
 		return NULL;
+	}else
+	{
+		drmFd = device_fd;
+	}
 
 	drmDropMaster( drmFd );
 
@@ -467,6 +496,7 @@ ErrorExit:
 	return NULL;
 }
 
+
 int NX_SyncVideoMemory(int drmFd ,int gemFd, int size)
 {
 	gem_sync(drmFd, gemFd, size);
@@ -488,7 +518,7 @@ void NX_FreeVideoMemory( NX_VID_MEMORY_INFO * pMem )
 			close( pMem->dmaFd[i] );
 		}
 
-		close( pMem->drmFd );
+		//close( pMem->drmFd );
 		free( pMem );
 	}
 }

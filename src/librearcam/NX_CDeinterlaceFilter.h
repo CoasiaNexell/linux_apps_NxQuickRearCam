@@ -74,6 +74,7 @@ public:
 #else
 	int32_t SetConfig (NX_DEINTERLACE_INFO *pDeinterInf);
 #endif
+	void		SetDeviceFD(int32_t mem_dev_fd);
 
 private:
 	static void *ThreadStub( void *pObj );
@@ -93,6 +94,7 @@ private:
 	NX_CDeiniterlaceOutputPin *m_pOutputPin;
 
 	pthread_t		m_hThread;
+	pthread_attr_t  thread_attrs;
 	int32_t			m_bThreadRun;
 
 	NX_CMutex		m_hLock;
@@ -106,6 +108,8 @@ private:
 	int32_t			m_iCaptureQuality;
 	char*			m_pFileName;
 	int32_t			(*FileNameCallbackFunc)( uint8_t *pBuf, uint32_t iBufSize );
+
+	int32_t 		m_MemDevFd;
 
 private:
 	NX_CDeinterlaceFilter (const NX_CDeinterlaceFilter &Ref);
@@ -152,6 +156,8 @@ public:
 	virtual int32_t ReleaseSample( NX_CSample *pSample );
 	virtual int32_t GetDeliverySample( NX_CSample **ppSample );
 
+	void SetDeviceFD(int32_t mem_dev_fd);
+
 #ifndef ANDROID_SURF_RENDERING
 	int32_t	AllocateBuffer( int32_t iNumOfBuffer );
 #else
@@ -166,6 +172,8 @@ private:
 
 	NX_VID_MEMORY_HANDLE *m_hVideoMemory;
 	int32_t				m_iNumOfBuffer;
+
+	int32_t				m_MemDevFd;
 
 
 private:

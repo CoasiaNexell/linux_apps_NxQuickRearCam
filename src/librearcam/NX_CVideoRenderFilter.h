@@ -23,7 +23,6 @@
 #ifdef __cplusplus
 
 #include "NX_CBaseFilter.h"
-//#include <CNX_BaseClass.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <fcntl.h>
@@ -136,6 +135,8 @@ public:
 #else
 	int32_t		SetConfig( NX_DISPLAY_INFO *pDspInfo);
 #endif
+	void		SetDeviceFD(int32_t dp_device_fd);
+
 private:
 	static void *ThreadStub( void *pObj );
 	void		ThreadProc( void );
@@ -157,6 +158,7 @@ private:
 	NX_CVideoRenderInputPin		*m_pInputPin;
 
 	pthread_t		m_hThread;
+	pthread_attr_t  	thread_attrs;
 	int32_t			m_bThreadRun;
 	int32_t			m_bPause;
 
@@ -197,6 +199,8 @@ private:
 	NX_CMutex	m_hDspCtrlLock;
 
 	void *pNativeWindow;
+
+	int32_t m_DpDevFd;
 
 #ifdef ANDROID
 	struct dp_framebuffer* default_fb;

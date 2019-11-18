@@ -162,12 +162,20 @@ static int32_t IsContinuousPlanes( uint32_t fourcc )
 //
 //	Nexell Memory Allocator Wrapper
 //
-NX_MEMORY_INFO *NX_AllocateMemory( int size, int align )
+NX_MEMORY_INFO *NX_AllocateMemory(int32_t mem_dev_fd, int size, int align )
 {
 	int sharedFd = -1;
 	NX_MEMORY_INFO *pMem;
+	int ionFd;
 
-	int ionFd = open( ION_DEVICE_NAME, O_RDWR );
+	if( mem_dev_fd < 0)
+	{
+		ionFd = open( ION_DEVICE_NAME, O_RDWR );
+	}else
+	{
+		ionFd = mem_dev_fd;
+	}
+
 	if( 0 > ionFd )
 		return NULL;
 
@@ -219,7 +227,7 @@ void NX_FreeMemory( NX_MEMORY_INFO *pMem )
 //			2 Plane : NV12
 //			3 Plane : I420
 //
-NX_VID_MEMORY_INFO * NX_AllocateVideoMemory( int width, int height, int32_t planes, uint32_t format, int align , int32_t mem_type)
+NX_VID_MEMORY_INFO * NX_AllocateVideoMemory(int32_t device_fd, int width, int height, int32_t planes, uint32_t format, int align , int32_t mem_type)
 {
 	int sharedFd[NX_MAX_PLANES] = {0, };
 	int32_t i=0;
@@ -230,8 +238,16 @@ NX_VID_MEMORY_INFO * NX_AllocateVideoMemory( int width, int height, int32_t plan
 	int ret;
 
 	NX_VID_MEMORY_INFO *pVidMem;
+	int ionFd;
 
-	int ionFd = open( ION_DEVICE_NAME, O_RDWR );
+	if(device_fd < 0)
+	{
+		ionFd = open( ION_DEVICE_NAME, O_RDWR );
+	}else
+	{
+		ionFd = device_fd;
+	}
+
 	if( 0 > ionFd )
 		return NULL;
 
