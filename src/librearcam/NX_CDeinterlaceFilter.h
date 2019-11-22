@@ -67,6 +67,9 @@ public:
 	virtual int32_t	Capture( int32_t iQuality );
 	virtual void	RegFileNameCallback( int32_t (*cbFunc)(uint8_t*, uint32_t) );
 
+	int32_t 	Init( void );
+	int32_t 	Deinit( void );
+
 
 #ifdef ANDROID_SURF_RENDERING
 	int32_t SetConfig (NX_DEINTERLACE_INFO *pDeinterInf, NX_CAndroidRenderer *m_pAndroidRender);
@@ -80,14 +83,12 @@ private:
 	static void *ThreadStub( void *pObj );
 	void		ThreadProc( void );
 
-	int32_t 	Init( void );
-	int32_t 	Deinit( void );
-
 	int32_t 	Deinterlace( NX_CSample *pInSample, NX_CSample *pOutSample );
 
 
 private:
-	enum { MAX_INPUT_NUM = 256, MAX_OUTPUT_NUM = 8 };
+	//enum { MAX_INPUT_NUM = 256, MAX_OUTPUT_NUM = 8 };
+	enum { MAX_INPUT_NUM = 256, MAX_OUTPUT_NUM = 4 };
 	enum { MAX_FILENAME_SIZE = 1024 };
 
 	NX_CDeiniterlaceInputPin *m_pInputPin;
@@ -110,6 +111,7 @@ private:
 	int32_t			(*FileNameCallbackFunc)( uint8_t *pBuf, uint32_t iBufSize );
 
 	int32_t 		m_MemDevFd;
+
 
 private:
 	NX_CDeinterlaceFilter (const NX_CDeinterlaceFilter &Ref);
@@ -159,10 +161,14 @@ public:
 	void SetDeviceFD(int32_t mem_dev_fd);
 
 #ifndef ANDROID_SURF_RENDERING
-	int32_t	AllocateBuffer( int32_t iNumOfBuffer );
+	int32_t AllocateVideoBuffer(int32_t iNumOfBuffer);
 #else
-	int32_t	AllocateBuffer( int32_t iNumOfBuffer , NX_CAndroidRenderer *pAndroidRender);
+	int32_t AllocateVideoBuffer( int32_t iNumOfBuffer,  NX_CAndroidRenderer *pAndroidRender);
 #endif
+
+	int32_t	AllocateBuffer( int32_t iNumOfBuffer );
+	void FreeVideoBuffer();
+
 	void	FreeBuffer( void );
 	void 	ResetSignal( void );
 

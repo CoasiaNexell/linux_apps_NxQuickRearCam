@@ -48,9 +48,11 @@ public:
 	virtual int32_t Stop( void );
 	virtual int32_t Pause( int32_t );
 
+	int32_t	Init( void );
+	int32_t	Deinit( void );
+
 	void GetResolution(int32_t type, int32_t module, int32_t *width, int32_t *height);
 	void SetDeviceFD(int32_t cam_dev_fd, int32_t mem_dev_fd);
-
 
 #ifdef ANDROID_SURF_RENDERING
 	virtual int32_t SetConfig( NX_MEDIA_INFO *pInfo , NX_CAndroidRenderer *pAndroidRender);
@@ -70,15 +72,15 @@ private:
 	static void*	ThreadStub( void *pObj );
 	void			ThreadProc( void );
 
-	int32_t	Init( void );
-	int32_t	Deinit( void );
-
+	int32_t		V4l2CamInit();
 
 
 private:
-	enum { MAX_INPUT_NUM = 256, MAX_OUTPUT_NUM = 8 };
+	//enum { MAX_INPUT_NUM = 256, MAX_OUTPUT_NUM = 8 };
+	enum { MAX_INPUT_NUM = 256, MAX_OUTPUT_NUM = 6 };
 	enum { MAX_FILENAME_SIZE = 1024 };
-	enum { MAX_NUM_BUFFER=32, NUM_BUFFER=8 };
+	//enum { MAX_NUM_BUFFER=32, NUM_BUFFER=8 };
+	enum { MAX_NUM_BUFFER=32, NUM_BUFFER=6 };
 
 	NX_CV4l2VipOutputPin*	m_pOutputPin;
 
@@ -87,12 +89,13 @@ private:
 
 	int32_t			m_bThreadRun;
 	int32_t			m_bPause;
-	int32_t 		getFirstFrame;
 
 	NX_CV4l2Camera*	m_pV4l2Camera;
 	NX_CQueue*		m_pReleaseQueue;
 
 	NX_VID_MEMORY_HANDLE *m_hVideoMemory;
+
+	NX_VIP_INFO info;
 
 	NX_CMutex		m_hLock;
 

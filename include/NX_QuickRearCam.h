@@ -115,6 +115,7 @@ enum deinter_engine_sel {
 void NX_QuiclRearCamReleaseHandle(void*hRearCam);
 void* NX_QuickRearCamGetHandle(NX_REARCAM_INFO *p_vipInfo, DISPLAY_INFO* p_dspInfo, DEINTERLACE_INFO* p_deinterInfo);
 int32_t NX_QuickRearCamInit(void* hRearCam);
+int32_t NX_QuickRearCamStop(void* hRearCam);
 int32_t NX_QuickRearCamDeInit(void* hRearCam);
 int32_t NX_QuickRearCamStart(void* hRearCam);
 int32_t NX_QuickRearCamPause(void* hRearCam,int32_t m_bPause);

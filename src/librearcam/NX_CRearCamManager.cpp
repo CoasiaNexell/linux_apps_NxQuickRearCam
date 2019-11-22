@@ -136,7 +136,7 @@ int32_t NX_CRearCamManager::InitRearCamManager(NX_REARCAM_INFO *pInfo , DISPLAY_
 		deinterInfo.height 			= videoInfo.iHeight;
 	}
 
-
+	//device open--------------------------------------------------------------------------
 #ifdef USE_ION_ALLOCATOR
 	m_MemDevFd = open( "/dev/ion", O_RDWR );
 #else
@@ -146,15 +146,8 @@ int32_t NX_CRearCamManager::InitRearCamManager(NX_REARCAM_INFO *pInfo , DISPLAY_
 	m_DPDevFd = drmOpen( "nexell", NULL );
 
 	printf("m_MemDevFd / m_CamDevFd / m_DPDevFd : %d / %d / %d \n", m_MemDevFd, m_CamDevFd, m_DPDevFd);
+	//--------------------------------------------------------------------------------------
 
-	return 0;
-
-}
-
-//------------------------------------------------------------------------------
-int32_t NX_CRearCamManager::Init()
-{
-	NxDbgMsg( NX_DBG_INFO, "%s()++\n", __FUNCTION__ );
 	NX_CAutoLock lock( &m_hLock );
 	//
 	//	Create Instance
@@ -259,9 +252,53 @@ Error:
 #ifdef ANDROID_SURF_RENDERING
 	if(m_pAndroidRenderer		) {	delete m_pAndroidRenderer;		m_pAndroidRenderer		= NULL; }
 #endif
-
-	NxDbgMsg( NX_DBG_ERR, "%s()--NxQuickRearCam Init Fail\n", __FUNCTION__ );
+	NxDbgMsg( NX_DBG_ERR, "%s()--NxQuickRearCam Manager Init Fail\n", __FUNCTION__ );
 	return -1;
+
+}
+
+//------------------------------------------------------------------------------
+int32_t NX_CRearCamManager::Init()
+{
+	NxDbgMsg( NX_DBG_INFO, "%s()++\n", __FUNCTION__ );
+
+	int32_t ret = 0;
+
+	mRearCamStatus = REAR_CAM_STATUS_STOP;
+
+	if(m_pV4l2VipFilter)
+	{
+		ret = m_pV4l2VipFilter->Init();
+		if(ret < 0)
+		{
+			printf("V4l2VipFilter Init Fail\n");
+			return -1;
+		}
+	}
+
+	if(m_pDeinterlaceFilter)
+	{
+		ret = m_pDeinterlaceFilter->Init();
+		if(ret < 0)
+		{
+			printf("DeinterlaceFilter Init Fail\n");
+			return -1;
+		}
+	}
+
+	if(m_pVideoRenderFilter)
+	{
+		ret = m_pVideoRenderFilter->Init();
+		if(ret < 0)
+		{
+			printf("VideoRenderFilter Init Fail\n");
+			return -1;
+		}
+	}
+
+	NxDbgMsg( NX_DBG_INFO, "%s()--\n", __FUNCTION__ );
+
+	return 0;
 }
 
 //------------------------------------------------------------------------------
@@ -270,10 +307,33 @@ int32_t NX_CRearCamManager::Deinit( void )
 	NxDbgMsg( NX_DBG_VBS, "%s()++\n", __FUNCTION__ );
 	NX_CAutoLock lock( &m_hLock );
 
-	if( m_pRefClock				) { delete m_pRefClock;				m_pRefClock				= NULL;	}
-	if( m_pV4l2VipFilter		) {	delete m_pV4l2VipFilter;		m_pV4l2VipFilter		= NULL; }
-	if( m_pDeinterlaceFilter    ) { delete m_pDeinterlaceFilter;    m_pDeinterlaceFilter    = NULL; }
-	if( m_pVideoRenderFilter	) {	delete m_pVideoRenderFilter;	m_pVideoRenderFilter	= NULL; }
+	if(m_pRefClock)
+	{
+		delete m_pRefClock;
+		m_pRefClock	= NULL;
+	}
+
+	if(m_pV4l2VipFilter)
+	{
+		m_pV4l2VipFilter->Deinit();
+		delete m_pV4l2VipFilter;
+		m_pV4l2VipFilter = NULL;
+	}
+
+	if(m_pDeinterlaceFilter)
+	{
+		m_pDeinterlaceFilter->Deinit();
+		delete m_pDeinterlaceFilter;
+		m_pDeinterlaceFilter = NULL;
+	}
+
+	if(m_pVideoRenderFilter)
+	{
+		m_pVideoRenderFilter->Deinit();
+		delete m_pDeinterlaceFilter;
+		m_pDeinterlaceFilter = NULL;
+	}
+
 #ifdef ANDROID_SURF_RENDERING
 	if(m_pAndroidRenderer		) {	delete m_pAndroidRenderer;		m_pAndroidRenderer		= NULL; }
 #endif
@@ -312,6 +372,7 @@ int32_t NX_CRearCamManager::Start( void )
 			return -1;
 		}
 	}
+
 	if( m_pV4l2VipFilter )
 	{
 		if(m_pV4l2VipFilter->Run() < 0)
@@ -469,7 +530,7 @@ int32_t NX_QuickRearCamInit(void* hRearCam)
 }
 
 //------------------------------------------------------------------------------
-int32_t NX_QuickRearCamDeInit(void* hRearCam)
+int32_t NX_QuickRearCamStop(void* hRearCam)
 {
 	NxDbgMsg( NX_DBG_INFO, "%s() ++++ \n", __FUNCTION__ );
 	NX_CRearCamManager *pstRearCamManager = NULL;
@@ -477,13 +538,26 @@ int32_t NX_QuickRearCamDeInit(void* hRearCam)
 	pstRearCamManager = (NX_CRearCamManager*) hRearCam;
 
 	pstRearCamManager->Stop();
-	pstRearCamManager->Deinit();
 
 	NxDbgMsg( NX_DBG_INFO, "%s() ----- \n", __FUNCTION__ );
 
 	return 0;
 }
 
+//------------------------------------------------------------------------------
+int32_t NX_QuickRearCamDeInit(void* hRearCam)
+{
+	NxDbgMsg( NX_DBG_INFO, "%s() ++++ \n", __FUNCTION__ );
+	NX_CRearCamManager *pstRearCamManager = NULL;
+
+	pstRearCamManager = (NX_CRearCamManager*) hRearCam;
+
+	pstRearCamManager->Deinit();
+
+	NxDbgMsg( NX_DBG_INFO, "%s() ----- \n", __FUNCTION__ );
+
+	return 0;
+}
 
 //------------------------------------------------------------------------------
 int32_t NX_QuickRearCamStart(void* hRearCam)

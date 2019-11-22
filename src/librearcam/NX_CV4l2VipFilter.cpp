@@ -61,7 +61,6 @@ NX_CV4l2VipFilter::NX_CV4l2VipFilter()
 	, m_hThread( 0x00 )
 	, m_bThreadRun( false )
 	, m_bPause(true)
-	, getFirstFrame(false)
 	, m_pV4l2Camera( NULL )
 	, m_pReleaseQueue( NULL )
 	, m_bCapture( false )
@@ -87,8 +86,6 @@ NX_CV4l2VipFilter::NX_CV4l2VipFilter()
 //------------------------------------------------------------------------------
 NX_CV4l2VipFilter::~NX_CV4l2VipFilter()
 {
-	Deinit();
-
 	if( m_pFileName )
 		free( m_pFileName );
 
@@ -155,10 +152,18 @@ int32_t NX_CV4l2VipFilter::Run( void )
 		if( m_pOutputPin && m_pOutputPin->IsConnected() )
 			m_pOutputPin->Active();
 
-		if( 0 > Init() ) {
-			NxDbgMsg( NX_DBG_ERR, "Fail, Init().\n" );
+		ret = V4l2CamInit();
+		if(ret < 0)
+		{
+			printf("V4l2CameraInit Fail\n");
 			return -1;
 		}
+
+		m_pOutputPin->AllocateBuffer( MAX_OUTPUT_NUM );
+
+		m_pReleaseQueue = new NX_CQueue();
+		m_pReleaseQueue->Reset();
+
 
 		m_bThreadRun = true;
 
@@ -197,12 +202,25 @@ int32_t NX_CV4l2VipFilter::Stop( void )
 		m_pOutputPin->ResetSignal();
 		pthread_join( m_hThread, NULL );
 
-		Deinit();
-
-		m_bRun = false;
+#ifdef ADJUST_THREAD_PRIORITY
+		NX_ThreadAttributeDestroy(&thread_attrs);
+#endif
 	}
 
-	getFirstFrame = false;
+	if( m_pV4l2Camera )
+	{
+		m_pV4l2Camera->Deinit();
+		delete m_pV4l2Camera;
+		m_pV4l2Camera = NULL;
+	}
+
+	m_pOutputPin->FreeBuffer();
+
+	if( m_pReleaseQueue ) {
+		delete m_pReleaseQueue;
+		m_pReleaseQueue = NULL;
+	}
+	m_bRun = false;
 
 	NxDbgMsg( NX_DBG_VBS, "%s()--\n", __FUNCTION__ );
 
@@ -332,8 +350,6 @@ int32_t NX_CV4l2VipFilter::Init( void )
 	int32_t allocWidth;
 
 	NX_MEDIA_INFO *pInfo;
-	NX_VIP_INFO info;
-
 
 	m_pOutputPin->GetMediaInfo( &pInfo );
 
@@ -367,8 +383,6 @@ int32_t NX_CV4l2VipFilter::Init( void )
 	else
  		allocWidth = ALLINEDN(pInfo->iWidth, 64);
 
-	m_pV4l2Camera = new NX_CV4l2Camera();
-
 #ifdef ANDROID_SURF_RENDERING
 	if(m_pAndroidRender == NULL)
 #endif
@@ -394,26 +408,6 @@ int32_t NX_CV4l2VipFilter::Init( void )
 			//memset(m_hVideoMemory[i]->pBuffer[0], 0x0, m_hVideoMemory[i]->size[0]);
 		}
 
-		for( int32_t i=0; i<NUM_BUFFER ; i++ )
-		{
-			m_pV4l2Camera->AddVideoMemory(m_hVideoMemory[i]);
-		}
-
-		if( 0 > m_pV4l2Camera->Init( &info ))
-		{
-			delete m_pV4l2Camera;
-			m_pV4l2Camera = NULL;
-
-			NxDbgMsg( NX_DBG_ERR, "Fail, V4l2Camera Init().\n");
-			NxDbgMsg( NX_DBG_VBS, "%s()--\n", __FUNCTION__ );
-			return -1;
-		}
-
-		m_pOutputPin->AllocateBuffer( MAX_OUTPUT_NUM );
-
-		m_pReleaseQueue = new NX_CQueue();
-		m_pReleaseQueue->Reset();
-
 	}
 #ifdef ANDROID_SURF_RENDERING
 	else
@@ -434,12 +428,6 @@ int32_t NX_CV4l2VipFilter::Init( void )
 			NxDbgMsg( NX_DBG_VBS, "%s()--\n", __FUNCTION__ );
 			return -1;
 		}
-
-		m_pOutputPin->AllocateBuffer( MAX_OUTPUT_NUM );
-
-		m_pReleaseQueue = new NX_CQueue();
-		m_pReleaseQueue->Reset();
-
 	}
 #endif
 
@@ -448,28 +436,32 @@ int32_t NX_CV4l2VipFilter::Init( void )
 	return 0;
 }
 
+int32_t NX_CV4l2VipFilter::V4l2CamInit()
+{
+	m_pV4l2Camera = new NX_CV4l2Camera();
+
+	for( int32_t i=0; i<NUM_BUFFER ; i++ )
+	{
+		m_pV4l2Camera->AddVideoMemory(m_hVideoMemory[i]);
+	}
+
+	if( 0 > m_pV4l2Camera->Init( &info ))
+	{
+		delete m_pV4l2Camera;
+		m_pV4l2Camera = NULL;
+
+		NxDbgMsg( NX_DBG_ERR, "Fail, V4l2Camera Init().\n");
+		NxDbgMsg( NX_DBG_VBS, "%s()--\n", __FUNCTION__ );
+		return -1;
+	}
+
+	return 0;
+}
+
 //------------------------------------------------------------------------------
 int32_t NX_CV4l2VipFilter::Deinit( void )
 {
 	NxDbgMsg( NX_DBG_VBS, "%s()++\n", __FUNCTION__ );
-
-#ifdef ADJUST_THREAD_PRIORITY
-	NX_ThreadAttributeDestroy(&thread_attrs);
-#endif
-
-	if( m_pV4l2Camera )
-	{
-		m_pV4l2Camera->Deinit();
-		delete m_pV4l2Camera;
-		m_pV4l2Camera = NULL;
-	}
-
-	m_pOutputPin->FreeBuffer();
-
-	if( m_pReleaseQueue ) {
-		delete m_pReleaseQueue;
-		m_pReleaseQueue = NULL;
-	}
 
 #ifdef ANDROID_SURF_RENDERING
 	if(m_hVideoMemory )
@@ -543,12 +535,6 @@ void NX_CV4l2VipFilter::ThreadProc( void )
 		m_pV4l2Camera->DequeueBuffer(&bufIdx);
 
 		{
-			if(getFirstFrame == false)
-			{
-				//printf("[QuickRearCam] Get First Frame\n");
-				getFirstFrame = true;
-			}
-
 			pBuf = (NX_VID_MEMORY_INFO*) m_hVideoMemory[bufIdx];
 
 			preview_idx = bufIdx;

@@ -46,11 +46,36 @@ NX_CRGBDraw::~NX_CRGBDraw(){
 
 }
 
+void NX_CRGBDraw::AllocBuffer(NX_RGB_DRAW_INFO *pInfo)
+{
+	int32_t mem_size;
+
+	mem_size = pInfo->m_iDspWidth * pInfo->m_iDspHeight * 4;
+
+	for(int i=0; i<pInfo->m_iNumBuffer; i++)
+	{
+		pRGBData[i] = NX_AllocateMemory(pInfo->m_MemDevFd, mem_size, pInfo->m_iDspWidth * 4);
+		NX_MapMemory(pRGBData[i]);
+		m_MemInfo[i].mem_size = ALIGN(mem_size, pInfo->m_iDspWidth * 4);
+		m_MemInfo[i].pBuffer = pRGBData[i]->pBuffer;
+	}
+}
+
+void NX_CRGBDraw::FreeBuffer()
+{
+	for(int32_t i = 0 ; i <m_DspInfo.m_iNumBuffer ; i++)
+	{
+		if(pRGBData[i] != NULL)
+		{
+			NX_FreeMemory(pRGBData[i]);
+		}
+	}
+}
+
 //------------------------------------------------------------------------------
 int32_t NX_CRGBDraw::Init(NX_RGB_DRAW_INFO *pInfo)
 {
 	int32_t hDrmFd = -1;
-	int32_t mem_size;
 
 	memset(&m_DspInfo, 0, sizeof(NX_RGB_DRAW_INFO));
 
@@ -84,18 +109,6 @@ int32_t NX_CRGBDraw::Init(NX_RGB_DRAW_INFO *pInfo)
 	m_DspInfo.m_iNumBuffer = pInfo->m_iNumBuffer;
 	m_DspInfo.uDrmFormat = pInfo->uDrmFormat;
 
-	mem_size = m_DspInfo.m_iDspWidth * m_DspInfo.m_iDspHeight * 4;
-
-	for(int i=0; i<m_DspInfo.m_iNumBuffer; i++)
-	{
-		pRGBData[i] = NX_AllocateMemory(pInfo->m_MemDevFd, mem_size, m_DspInfo.m_iDspWidth * 4);
-		NX_MapMemory(pRGBData[i]);
-		m_MemInfo[i].mem_size = ALIGN(mem_size, m_DspInfo.m_iDspWidth * 4);
-		m_MemInfo[i].pBuffer = pRGBData[i]->pBuffer;
-
-		//memset(m_MemInfo[i].pBuffer, 0, mem_size);
-	}
-
 	return 0;
 }
 
@@ -121,15 +134,6 @@ void NX_CRGBDraw::Deinit( void )
 		}
 	}
 
-	for(int32_t i = 0 ; i <m_DspInfo.m_iNumBuffer ; i++)
-	{
-		if(pRGBData[i] != NULL)
-		{
-			NX_FreeMemory(pRGBData[i]);
-		}
-	}
-
-	memset( &m_DspInfo, 0, sizeof(m_DspInfo) );
 
 }
 

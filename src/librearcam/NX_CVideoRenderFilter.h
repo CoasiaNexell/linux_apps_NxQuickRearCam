@@ -116,6 +116,9 @@ public:
 	virtual int32_t Stop( void );
 	virtual int32_t Pause( int32_t );
 
+	int32_t 	Init( void );
+	int32_t 	Deinit( void );
+
 public:
 	//
 	//	Interface Function
@@ -141,15 +144,14 @@ private:
 	static void *ThreadStub( void *pObj );
 	void		ThreadProc( void );
 
-	int32_t 	Init( void );
-	int32_t 	Deinit( void );
-
 	int32_t		Render( NX_CSample *pSample );
 
 	int32_t 	DspVideoSetPriority(int32_t priority);
 
 	int32_t 	DrmIoctl( int32_t fd, unsigned long request, void *pArg );
 	int32_t		ImportGemFromFlink( int32_t fd, uint32_t flinkName );
+
+	int32_t		DisplayInit();
 
 private:
 	enum { MAX_INPUT_NUM = 256, MAX_OUTPUT_NUM = 12 };

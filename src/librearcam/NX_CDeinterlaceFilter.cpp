@@ -104,8 +104,6 @@ NX_CDeinterlaceFilter::NX_CDeinterlaceFilter()
 //------------------------------------------------------------------------------
 NX_CDeinterlaceFilter::~NX_CDeinterlaceFilter()
 {
-	Deinit();
-
 	if( m_pInputPin )
 		delete m_pInputPin;
 
@@ -189,16 +187,33 @@ int32_t NX_CDeinterlaceFilter::Run( void )
 
 	if( false == m_bRun )
 	{
+		m_pInputPin->AllocateBuffer( MAX_INPUT_NUM );
+		m_pOutputPin->AllocateBuffer( MAX_OUTPUT_NUM);
+
 		if( m_pInputPin )
 			m_pInputPin->Active();
 
 		if( m_pOutputPin && m_pOutputPin->IsConnected() )
 			m_pOutputPin->Active();
 
-		if( 0 > Init() ) {
-			NxDbgMsg( NX_DBG_ERR, "Fail, Init().\n" );
-			return -1;
+
+		//Deinterlacer Init-------------------------------------------------
+		if(m_DeinterInfo.engineSel == NEXELL_SW_DEINTERLACER)
+		{
+			hDeInterlace = NX_DeInterlaceOpen(DEINTERLACE_BLEND);
 		}
+
+#ifdef THUNDER_DEINTERLACE_TEST
+		else if(m_DeinterInfo.engineSel == THUNDER_SW_DEINTERLACER)
+		{
+			//deinterlacer_init(m_DeinterInfo.width, m_DeinterInfo.height, CORR, BIAS);
+			deinterlacer_init(m_DeinterInfo.width, m_DeinterInfo.height, m_DeinterInfo.corr, BIAS);
+
+			deinterlacer_create();
+		}
+#endif
+		//---------------------------------------------------------------
+
 		m_bThreadRun = true;
 
 #ifdef ADJUST_THREAD_PRIORITY
@@ -213,11 +228,7 @@ int32_t NX_CDeinterlaceFilter::Run( void )
 			NxDbgMsg( NX_DBG_ERR, "Fail, Create Thread.\n" );
 			return -1;
 		}
-
-
 #endif
-
-
 		m_bRun = true;
 	}
 
@@ -242,6 +253,7 @@ int32_t NX_CDeinterlaceFilter::Stop( void )
 		m_bThreadRun = false;
 		m_pInputPin->ResetSignal();
 		m_pOutputPin->ResetSignal();
+
 		pthread_join( m_hThread, NULL );
 
 		if(m_DeinterInfo.engineSel == NEXELL_SW_DEINTERLACER)
@@ -256,9 +268,16 @@ int32_t NX_CDeinterlaceFilter::Stop( void )
 		}
 #endif
 
-		Deinit();
+#ifdef ADJUST_THREAD_PRIORITY
+		NX_ThreadAttributeDestroy(&thread_attrs);
+#endif
+		NxDbgMsg( NX_DBG_VBS, "%s()--%d\n", __FUNCTION__, __LINE__ );
+		m_pInputPin->Flush();
+		m_pInputPin->FreeBuffer();
+		m_pOutputPin->FreeBuffer();
 
 		m_bRun = false;
+
 	}
 
 	NxDbgMsg( NX_DBG_VBS, "%s()--\n", __FUNCTION__ );
@@ -320,29 +339,16 @@ int32_t NX_CDeinterlaceFilter::Init( void )
 {
 	NxDbgMsg( NX_DBG_VBS, "%s()++\n", __FUNCTION__ );
 
-	m_pInputPin->AllocateBuffer( MAX_INPUT_NUM );
-
 	m_pOutputPin->SetDeviceFD(m_MemDevFd);
 
-#ifdef ANDROID_SURF_RENDERING
-	m_pOutputPin->AllocateBuffer( MAX_OUTPUT_NUM , m_pAndroidRender  );
+#ifdef ANDRPOD_SURF_RENDERING
+	m_pOutputPin->AllocateVideoBuffer(MAX_OUTPUT_NUM, m_pAndroidRender );
 #else
-	m_pOutputPin->AllocateBuffer( MAX_OUTPUT_NUM);
+	m_pOutputPin->AllocateVideoBuffer(MAX_OUTPUT_NUM);
 #endif
-	if(m_DeinterInfo.engineSel == NEXELL_SW_DEINTERLACER)
-	{
-		hDeInterlace = NX_DeInterlaceOpen(DEINTERLACE_BLEND);
-	}
-#ifdef THUNDER_DEINTERLACE_TEST
-	else if(m_DeinterInfo.engineSel == THUNDER_SW_DEINTERLACER)
-	{
-		//deinterlacer_init(m_DeinterInfo.width, m_DeinterInfo.height, CORR, BIAS);
-		deinterlacer_init(m_DeinterInfo.width, m_DeinterInfo.height, m_DeinterInfo.corr, BIAS);
 
-		deinterlacer_create();
-	}
-#endif
 	NxDbgMsg( NX_DBG_VBS, "%s()--\n", __FUNCTION__ );
+
 	return 0;
 }
 
@@ -351,13 +357,7 @@ int32_t NX_CDeinterlaceFilter::Deinit( void )
 {
 	NxDbgMsg( NX_DBG_VBS, "%s()++\n", __FUNCTION__ );
 
-#ifdef ADJUST_THREAD_PRIORITY
-	NX_ThreadAttributeDestroy(&thread_attrs);
-#endif
-
-	m_pInputPin->Flush();
-	m_pInputPin->FreeBuffer();
-	m_pOutputPin->FreeBuffer();
+	m_pOutputPin->FreeVideoBuffer();
 
 	NxDbgMsg( NX_DBG_VBS, "%s()--\n", __FUNCTION__ );
 	return 0;
@@ -862,15 +862,9 @@ void NX_CDeiniterlaceOutputPin::SetDeviceFD( int32_t  mem_dev_fd)
 #define ALLINEDN(X,N)	( (X+N-1) & (~(N-1)) )
 #endif
 //------------------------------------------------------------------------------
-#ifdef ANDROID_SURF_RENDERING
-int32_t NX_CDeiniterlaceOutputPin::AllocateBuffer( int32_t iNumOfBuffer,  NX_CAndroidRenderer *pAndroidRender)
-#else
 int32_t NX_CDeiniterlaceOutputPin::AllocateBuffer( int32_t iNumOfBuffer )
-#endif
 {
 	NxDbgMsg( NX_DBG_VBS, "%s()++\n", __FUNCTION__ );
-
-	//int32_t allocWidth;
 
 	m_pSampleQueue = new NX_CSampleQueue( iNumOfBuffer );
 	m_pSampleQueue->ResetValue();
@@ -878,6 +872,41 @@ int32_t NX_CDeiniterlaceOutputPin::AllocateBuffer( int32_t iNumOfBuffer )
 	m_pSemQueue = new NX_CSemaphore( iNumOfBuffer, iNumOfBuffer );
 	m_pSemQueue->ResetValue();
 
+
+#ifndef ANDROID_SURF_RENDERING
+	for( int32_t i = 0; i < iNumOfBuffer; i++ )
+	{
+		NX_CSample *pSample = new NX_CSample();
+		pSample->SetOwner( (NX_CBaseOutputPin*)this );
+		pSample->SetBuffer( (void*)m_hVideoMemory[i], sizeof(m_hVideoMemory[i]) );
+
+		m_pSampleQueue->PushSample( (NX_CSample*)pSample );
+		pSample->SetIndex(i);
+	}
+#else
+
+	for( int32_t i = 0; i < iNumOfBuffer; i++ )
+	{
+		NX_CSample *pSample = new NX_CSample();
+
+		pSample->SetOwner( (NX_CBaseOutputPin*)this );
+		pSample->SetBuffer( (void*)m_hVideoMemory[i], sizeof(m_hVideoMemory[i]) );
+
+		m_pSampleQueue->PushSample( (NX_CSample*)pSample );
+		pSample->SetIndex(i);
+	}
+#endif
+	NxDbgMsg( NX_DBG_VBS, "%s()--\n", __FUNCTION__ );
+	return 0;
+}
+
+//------------------------------------------------------------------------------
+#ifdef ANDROID_SURF_RENDERING
+int32_t NX_CDeiniterlaceOutputPin::AllocateVideoBuffer( int32_t iNumOfBuffer,  NX_CAndroidRenderer *pAndroidRender)
+#else
+int32_t NX_CDeiniterlaceOutputPin::AllocateVideoBuffer( int32_t iNumOfBuffer )
+#endif
+{
 	NX_MEDIA_INFO *pInfo = NULL;
 	GetMediaInfo( &pInfo );
 
@@ -897,32 +926,35 @@ int32_t NX_CDeiniterlaceOutputPin::AllocateBuffer( int32_t iNumOfBuffer )
 		}
 
 		NX_MapVideoMemory(m_hVideoMemory[i]);
-
-		NX_CSample *pSample = new NX_CSample();
-		pSample->SetOwner( (NX_CBaseOutputPin*)this );
-		pSample->SetBuffer( (void*)m_hVideoMemory[i], sizeof(m_hVideoMemory[i]) );
-
-		m_pSampleQueue->PushSample( (NX_CSample*)pSample );
-		pSample->SetIndex(i);
 	}
 #else
 	pAndroidRender->GetBuffers(iNumOfBuffer, pInfo->iWidth, pInfo->iHeight, &m_hVideoMemory);
-
-	for( int32_t i = 0; i < iNumOfBuffer; i++ )
-	{
-		NX_CSample *pSample = new NX_CSample();
-
-		pSample->SetOwner( (NX_CBaseOutputPin*)this );
-		pSample->SetBuffer( (void*)m_hVideoMemory[i], sizeof(m_hVideoMemory[i]) );
-
-		m_pSampleQueue->PushSample( (NX_CSample*)pSample );
-		pSample->SetIndex(i);
-	}
 #endif
 	m_iNumOfBuffer = iNumOfBuffer;
-	NxDbgMsg( NX_DBG_VBS, "%s()--\n", __FUNCTION__ );
+
 	return 0;
 }
+
+//------------------------------------------------------------------------------
+void NX_CDeiniterlaceOutputPin::FreeVideoBuffer()
+{
+#ifndef ANDROID_SURF_RENDERING
+	for( int32_t i = 0; i < m_iNumOfBuffer; i++ )
+	{
+		if(m_hVideoMemory[i])
+		{
+			NX_FreeVideoMemory(m_hVideoMemory[i]);
+			m_hVideoMemory[i] = NULL;
+		}
+	}
+	if(m_hVideoMemory)
+	{
+		free( m_hVideoMemory );
+		m_hVideoMemory = NULL;
+	}
+#endif
+}
+
 
 //------------------------------------------------------------------------------
 void NX_CDeiniterlaceOutputPin::FreeBuffer( void )
@@ -938,22 +970,11 @@ void NX_CDeiniterlaceOutputPin::FreeBuffer( void )
 
 			if( pSample )
 			{
-				NX_VID_MEMORY_HANDLE hVidMem = NULL;
 				int32_t iSize = 0;
 
-				pSample->GetBuffer( (void**)&hVidMem, &iSize );
-#ifndef ANDROID_SURF_RENDERING
-				if( hVidMem != NULL ) NX_FreeVideoMemory( hVidMem );
-#endif
 				delete pSample;
 			}
 		}
-#ifndef ANDROID_SURF_RENDERING
-		if( m_hVideoMemory ) {
-			free( m_hVideoMemory );
-			m_hVideoMemory = NULL;
-		}
-#endif
 		delete m_pSampleQueue;
 		m_pSampleQueue = NULL;
 	}
@@ -967,6 +988,8 @@ void NX_CDeiniterlaceOutputPin::FreeBuffer( void )
 
 	NxDbgMsg( NX_DBG_VBS, "%s()--\n", __FUNCTION__ );
 }
+
+
 
 //------------------------------------------------------------------------------
 void NX_CDeiniterlaceOutputPin::ResetSignal( void )

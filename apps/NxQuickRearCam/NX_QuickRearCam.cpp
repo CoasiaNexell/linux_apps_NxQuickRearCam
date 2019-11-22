@@ -233,6 +233,8 @@ int32_t main( int argc, char **argv )
 	int32_t m_iRearCamStatus = STATUS_STOP;
 	uint32_t count = 6;
 
+	int32_t ret = 0;
+
 	bool m_bSetResolution = false;
 
 	while ((c = getopt(argc, argv, optstr)) != -1) {
@@ -449,6 +451,7 @@ int32_t main( int argc, char **argv )
 
 	/////////////////////////////////////////////////////
 
+	//-------- get rear cam handle---------------------------
 	pQuickRearCamHandle = NX_QuickRearCamGetHandle(&vip_info, &dsp_info, &deinter_info);
 
 
@@ -483,7 +486,6 @@ int32_t main( int argc, char **argv )
 	int which = PRIO_PROCESS;
 	id_t pid;
 	int priority = -20;
-	int ret;
 
 	pid = getpid();
 	ret  = setpriority(which, pid, priority);
@@ -528,6 +530,22 @@ int32_t main( int argc, char **argv )
 
 
 	bool	m_bPGLDraw = 0;
+
+	//------- NxQuickRearCam Init------------------------------
+	ret = NX_QuickRearCamInit(pQuickRearCamHandle);
+	if(ret < 0)
+	{
+		printf("NX_QuickRearCam Init Fail\n");
+		return -1;
+	}
+
+
+	pgl_dsp_info.m_MemDevFd = NX_QuickRearCamGetMemDevFd(pQuickRearCamHandle);
+	pgl_dsp_info.drmFd		= NX_QuickRearCamGetDPDevFd(pQuickRearCamHandle);
+
+	//-------- Alloc PGL Buffer------------------------------
+	m_pPGLDraw->AllocBuffer(&pgl_dsp_info);
+
 	//-------------------------------------------------------------------
 
 	if(backgear_enable == true)	 //the case that is applied backgear detecting
@@ -538,11 +556,11 @@ int32_t main( int argc, char **argv )
 			{
 				if(backgear_status == NX_BACKGEAR_DETECTED && m_iRearCamStatus == STATUS_STOP)
 				{
-					//-------------QuickRearCam init---------------------------
-					NX_QuickRearCamInit(pQuickRearCamHandle);
+					//-------------QuickRaerCam Start-------------------------
+					NX_QuickRearCamStart(pQuickRearCamHandle);
+					m_iRearCamStatus = STATUS_RUN;
+					dsp_info.bSetCrtc		= 0;
 					//--------------------------------------------------------
-					pgl_dsp_info.m_MemDevFd = NX_QuickRearCamGetMemDevFd(pQuickRearCamHandle);
-					pgl_dsp_info.drmFd		= NX_QuickRearCamGetDPDevFd(pQuickRearCamHandle);
 
 					if(pgl_en == 1)
 					{
@@ -567,12 +585,6 @@ int32_t main( int argc, char **argv )
 					}
 					//--------------------------------------------------------
 
-					//-------------QuickRaerCam Start-------------------------
-					NX_QuickRearCamStart(pQuickRearCamHandle);
-					m_iRearCamStatus = STATUS_RUN;
-					dsp_info.bSetCrtc		= 0;
-					//--------------------------------------------------------
-
 					m_bPGLDraw = true;   //setting flag for drawing parking guide line when detected backgear
 					//--------------------------------------------------------
 				}
@@ -590,7 +602,7 @@ int32_t main( int argc, char **argv )
 						//------------------------------------------------------
 
 						//----------QuickRearCam Deinit-------------------------
-						NX_QuickRearCamDeInit(pQuickRearCamHandle);
+						NX_QuickRearCamStop(pQuickRearCamHandle);
 						//------------------------------------------------------
 						usleep(50000);
 						m_iRearCamStatus = STATUS_STOP;
@@ -650,10 +662,6 @@ int32_t main( int argc, char **argv )
 		}
 	}else  //the case that isn't applied backgear detecting
 	{
-		//-----------------QuickRearCam Init---------------------------
-		NX_QuickRearCamInit(pQuickRearCamHandle);
-		//-------------------------------------------------------------
-
 		if(pgl_en == 1)
 		{
 			//--------------- RGB Draw Init(for parking guide line)--------
@@ -724,6 +732,9 @@ int32_t main( int argc, char **argv )
 		NX_StopBackGearDetectService();
 	//---------------------------------------------------------------
 
+	//-----------QuickRearCam Stop-----------------------------------
+	NX_QuickRearCamStop(pQuickRearCamHandle);
+
 	//-----------QuickRearCam Deinit---------------------------------
 	NX_QuickRearCamDeInit(pQuickRearCamHandle);
 
@@ -734,6 +745,11 @@ int32_t main( int argc, char **argv )
 	//-----------RGB Draw Deinit-------------------------------------
 	m_pPGLDraw->Deinit();
 	//---------------------------------------------------------------
+
+	//------------PGL Buffer Free------------------------------------
+	m_pPGLDraw->FreeBuffer();
+
+	printf("--NxQuickRearCam Terminate--\n");
 
 	//-----------Stop Command Service -------------------------------
 #ifndef ANDROID

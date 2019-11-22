@@ -68,6 +68,8 @@ public:
 	virtual ~NX_CRGBDraw();
 
 public:
+	void AllocBuffer(NX_RGB_DRAW_INFO *pInfo);
+	void FreeBuffer();
 	int32_t Init(NX_RGB_DRAW_INFO *pInfo);
 	void Deinit(void);
 	int32_t Render(int32_t);

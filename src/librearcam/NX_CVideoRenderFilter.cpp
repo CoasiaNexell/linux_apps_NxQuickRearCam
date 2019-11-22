@@ -104,8 +104,6 @@ NX_CVideoRenderFilter::NX_CVideoRenderFilter()
 //------------------------------------------------------------------------------
 NX_CVideoRenderFilter::~NX_CVideoRenderFilter()
 {
-	Deinit();
-
 	if( m_pInputPin )	delete m_pInputPin;
 }
 
@@ -164,12 +162,17 @@ int32_t NX_CVideoRenderFilter::Run( void )
 
 	if( false == m_bRun )
 	{
+		m_pInputPin->AllocateBuffer( MAX_INPUT_NUM );
+
 		if( m_pInputPin )
 			m_pInputPin->Active();
 
-		Init();
+		ret = DisplayInit();
+		if(ret < 0)
+			return -1;
 
 		m_bThreadRun = true;
+
 
 #ifdef ADJUST_THREAD_PRIORITY
 		NX_AdjustThreadPriority(&thread_attrs, SCHED_RR, 50);
@@ -197,6 +200,8 @@ int32_t NX_CVideoRenderFilter::Stop( void )
 	NxDbgMsg( NX_DBG_VBS, "%s()++\n", __FUNCTION__ );
 	NX_CAutoLock lock( &m_hLock );
 
+	DspVideoSetPriority(2);
+
 	if( true == m_bRun )
 	{
 		if( m_pInputPin && m_pInputPin->IsActive() )
@@ -206,9 +211,22 @@ int32_t NX_CVideoRenderFilter::Stop( void )
 		m_pInputPin->ResetSignal();
 		pthread_join( m_hThread, NULL );
 
-		Deinit();
-
+#ifdef ADJUST_THREAD_PRIORITY
+		NX_ThreadAttributeDestroy(&thread_attrs);
+#endif
 		m_bRun = false;
+
+		m_pInputPin->Flush();
+		m_pInputPin->FreeBuffer();
+
+		for( int32_t i = 0; i < MAX_INPUT_BUFFER; i++ )
+		{
+			if( 0 < m_BufferId[i] )
+			{
+				drmModeRmFB( m_DspInfo.drmFd, m_BufferId[i] );
+				m_BufferId[i] = 0;
+			}
+		}
 	}
 
 	NxDbgMsg( NX_DBG_VBS, "%s()--\n", __FUNCTION__ );
@@ -331,10 +349,6 @@ void NX_CVideoRenderFilter::SetDeviceFD(int32_t dp_device_fd)
 //------------------------------------------------------------------------------
 int32_t NX_CVideoRenderFilter::Init( /*NX_DISPLAY_INFO *pDspInfo*/ )
 {
-	NxDbgMsg( NX_DBG_VBS, "%s()++\n", __FUNCTION__ );
-
-	m_pInputPin->AllocateBuffer( MAX_INPUT_NUM );
-
 #ifndef ANDROID_SURF_RENDERING
 	if(m_DpDevFd < 0)
 	{
@@ -350,6 +364,102 @@ int32_t NX_CVideoRenderFilter::Init( /*NX_DISPLAY_INFO *pDspInfo*/ )
 		return -1;
 	}
 
+#ifdef ANDROID
+	{
+		default_fb = NULL;
+		drmModeCrtcPtr pCrtc = NULL;
+		pCrtc = drmModeGetCrtc(m_DspInfo.drmFd , m_DspInfo.ctrlId);
+
+		if(m_DspInfo.setCrtc == 1 && pCrtc->buffer_id == 0)
+		{
+			drmModeRes *resources = NULL;
+			drmModeModeInfo* mode = NULL;
+			drmModeConnector *connector = NULL;
+			int i, area;
+
+			resources = drmModeGetResources(m_DspInfo.drmFd);
+
+			drm_device = dp_device_open(m_DspInfo.drmFd);
+
+			struct dp_plane *plane;
+			uint32_t format;
+			int err;
+			int d_idx = 0, p_idx = 1;
+
+			plane = dp_device_find_plane_by_index(drm_device, d_idx, p_idx);
+			if (!plane) {
+				printf("no overlay plane found\n");
+				return -1;
+			}
+
+			err = dp_plane_supports_format(plane, DRM_FORMAT_ARGB8888);
+			if (!err) {
+				printf("fail : no matching format found\n");
+				return -1;
+			}else
+			{
+				format = DRM_FORMAT_ARGB8888;
+			}
+
+			default_fb = dp_framebuffer_create(drm_device, format, m_DspInfo.lcd_width, m_DspInfo.lcd_height, 0);
+			if (!default_fb) {
+				printf("fail : framebuffer create Fail \n");
+				return -1;
+			}
+
+			err = dp_framebuffer_addfb2(default_fb);
+
+			if (err < 0) {
+				printf("fail : framebuffer add Fail \n");
+				if (default_fb)
+					dp_framebuffer_free(default_fb);
+				return -1;
+			}
+
+			for (i = 0; i < resources->count_connectors; i++) {
+				connector = drmModeGetConnector(m_DspInfo.drmFd, resources->connectors[i]);
+				if ((connector->connector_id == m_DspInfo.connectorId) && (connector->connection == DRM_MODE_CONNECTED)) {
+					/* it's connected, let's use this! */
+					break;
+				}
+
+				drmModeFreeConnector(connector);
+				connector = NULL;
+			}
+
+			if (!connector) {
+				printf("no connected connector!\n");
+				return -1;
+			}
+
+			for (i = 0, area = 0; i < connector->count_modes; i++) {
+				drmModeModeInfo *current_mode = &connector->modes[i];
+
+				if (current_mode->type & DRM_MODE_TYPE_PREFERRED) {
+					mode = current_mode;
+				}
+
+				int current_area = current_mode->hdisplay * current_mode->vdisplay;
+				if (current_area > area) {
+					mode = current_mode;
+					area = current_area;
+				}
+			}
+
+			int ret = drmModeSetCrtc(m_DspInfo.drmFd, m_DspInfo.ctrlId, default_fb->id, 0, 0,
+					&m_DspInfo.connectorId, 1, mode);
+		}
+	}
+#endif
+#endif
+	return 0;
+}
+
+//------------------------------------------------------------------------------
+int32_t NX_CVideoRenderFilter::DisplayInit( void )
+{
+#ifndef ANDROID_SURF_RENDERING
+
 	drmSetMaster( m_DspInfo.drmFd );
 
 
@@ -359,97 +469,7 @@ int32_t NX_CVideoRenderFilter::Init( /*NX_DISPLAY_INFO *pDspInfo*/ )
 		NxDbgMsg( NX_DBG_ERR, "Fail, drmSetClientCap().\n" );
 		return -1;
 	}
-
-#ifdef ANDROID
-{
-	default_fb = NULL;
-	drmModeCrtcPtr pCrtc = NULL;
-	pCrtc = drmModeGetCrtc(m_DspInfo.drmFd , m_DspInfo.ctrlId);
-
-	if(m_DspInfo.setCrtc == 1 && pCrtc->buffer_id == 0)
-	{
-		drmModeRes *resources = NULL;
-		drmModeModeInfo* mode = NULL;
-		drmModeConnector *connector = NULL;
-		int i, area;
-
-		resources = drmModeGetResources(m_DspInfo.drmFd);
-
-		drm_device = dp_device_open(m_DspInfo.drmFd);
-
-		struct dp_plane *plane;
-		uint32_t format;
-		int err;
-		int d_idx = 0, p_idx = 1;
-
-		plane = dp_device_find_plane_by_index(drm_device, d_idx, p_idx);
-		if (!plane) {
-			printf("no overlay plane found\n");
-			return -1;
-		}
-
-		err = dp_plane_supports_format(plane, DRM_FORMAT_ARGB8888);
-		if (!err) {
-			printf("fail : no matching format found\n");
-			return -1;
-		}else
-		{
-			format = DRM_FORMAT_ARGB8888;
-		}
-
-		default_fb = dp_framebuffer_create(drm_device, format, m_DspInfo.lcd_width, m_DspInfo.lcd_height, 0);
-		if (!default_fb) {
-			printf("fail : framebuffer create Fail \n");
-			return -1;
-		}
-
-		err = dp_framebuffer_addfb2(default_fb);
-
-		if (err < 0) {
-			printf("fail : framebuffer add Fail \n");
-			if (default_fb)
-				dp_framebuffer_free(default_fb);
-			return -1;
-		}
-
-		for (i = 0; i < resources->count_connectors; i++) {
-			connector = drmModeGetConnector(m_DspInfo.drmFd, resources->connectors[i]);
-			if ((connector->connector_id == m_DspInfo.connectorId) && (connector->connection == DRM_MODE_CONNECTED)) {
-				/* it's connected, let's use this! */
-				break;
-			}
-
-			drmModeFreeConnector(connector);
-			connector = NULL;
-		}
-
-		if (!connector) {
-			/* we could be fancy and listen for hotplug events and wait for
-			* a connector..
-			*/
-			printf("no connected connector!\n");
-			return -1;
-		}
-
-		for (i = 0, area = 0; i < connector->count_modes; i++) {
-			drmModeModeInfo *current_mode = &connector->modes[i];
-
-			if (current_mode->type & DRM_MODE_TYPE_PREFERRED) {
-				mode = current_mode;
-			}
-
-			int current_area = current_mode->hdisplay * current_mode->vdisplay;
-			if (current_area > area) {
-				mode = current_mode;
-				area = current_area;
-			}
-		}
-
-		int ret = drmModeSetCrtc(m_DspInfo.drmFd, m_DspInfo.ctrlId, default_fb->id, 0, 0,
-				&m_DspInfo.connectorId, 1, mode);
-	}
-}
-#endif
+	getFirstFrame = false;
 
 
 #ifdef UI_OVERLAY_APP
@@ -458,7 +478,7 @@ int32_t NX_CVideoRenderFilter::Init( /*NX_DISPLAY_INFO *pDspInfo*/ )
 	if(m_DspInfo.pglEnable == 1)
 		DspVideoSetPriority(1);
 	else
-		DspVideoSetPriority(0);	
+		DspVideoSetPriority(0);
 #endif
 
 #else
@@ -473,13 +493,6 @@ int32_t NX_CVideoRenderFilter::Deinit( void )
 {
 	NxDbgMsg( NX_DBG_VBS, "%s()++\n", __FUNCTION__ );
 
-#ifdef ADJUST_THREAD_PRIORITY
-	NX_ThreadAttributeDestroy(&thread_attrs);
-#endif
-
-	m_pInputPin->Flush();
-	m_pInputPin->FreeBuffer();
-
 #ifndef ANDROID_SURF_RENDERING
 	DspVideoSetPriority(2);
 #ifdef ANDROID
@@ -493,14 +506,6 @@ int32_t NX_CVideoRenderFilter::Deinit( void )
 	if( m_DspInfo.drmFd > 0 )
 	{
 		// clean up object here
-		for( int32_t i = 0; i < MAX_INPUT_BUFFER; i++ )
-		{
-			if( 0 < m_BufferId[i] )
-			{
-				drmModeRmFB( m_DspInfo.drmFd, m_BufferId[i] );
-				m_BufferId[i] = 0;
-			}
-		}
 		if( 0 <= m_DspInfo.drmFd )
 		{
 			//drmClose( m_DspInfo.drmFd );
