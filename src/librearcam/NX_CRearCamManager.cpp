@@ -140,7 +140,7 @@ int32_t NX_CRearCamManager::InitRearCamManager(NX_REARCAM_INFO *pInfo , DISPLAY_
 #ifdef USE_ION_ALLOCATOR
 	m_MemDevFd = open( "/dev/ion", O_RDWR );
 #else
-	m_MemDevFd = open( "/dev/dri/card0", O_RDWR );
+	m_MemDevFd = drmOpen( "nexell", NULL );
 #endif
 	m_CamDevFd = nx_v4l2_open_device(nx_clipper_video, videoInfo.iModule);
 	m_DPDevFd = drmOpen( "nexell", NULL );
@@ -179,6 +179,25 @@ int32_t NX_CRearCamManager::InitRearCamManager(NX_REARCAM_INFO *pInfo , DISPLAY_
 	//	Set Notifier
 	//
 	if( m_pV4l2VipFilter		) m_pV4l2VipFilter		->SetEventNotifier( m_pEventNotifier );
+
+
+	//get video resolution
+	if(videoInfo.iWidth == 0 || videoInfo.iHeight == 0)
+	{
+		m_pV4l2VipFilter->GetResolution(nx_clipper_video, videoInfo.iModule, &videoInfo.iWidth, &videoInfo.iHeight);
+		NxDbgMsg( NX_DBG_ERR, "%s()--frame_width : %d, frame_height : %d\n", __FUNCTION__ , videoInfo.iWidth, videoInfo.iHeight );
+
+		videoInfo.iCropWidth 		= videoInfo.iWidth;
+		videoInfo.iCropHeight 		= videoInfo.iHeight;
+		videoInfo.iOutWidth			= videoInfo.iWidth;
+		videoInfo.iOutHeight 		= videoInfo.iHeight;
+		dspInfo.width 				= videoInfo.iWidth;
+		dspInfo.height 				= videoInfo.iHeight;
+		dspInfo.dspSrcRect.right 	= pDspInfo->iCropX + videoInfo.iWidth;
+		dspInfo.dspSrcRect.bottom 	= pDspInfo->iCropY + videoInfo.iHeight;
+		deinterInfo.width 			= videoInfo.iWidth;
+		deinterInfo.height 			= videoInfo.iHeight;
+	}
 
 
 	//
@@ -505,10 +524,13 @@ void NX_QuiclRearCamReleaseHandle( void* hRearCam )
 //------------------------------------------------------------------------------
 void *NX_QuickRearCamGetHandle(NX_REARCAM_INFO *p_VipInfo, DISPLAY_INFO* p_dspInfo, DEINTERLACE_INFO *p_deinterInfo)
 {
+	int32_t ret = 0;
 	NX_CRearCamManager *pstRearCamManager = NULL;
 	pstRearCamManager = new NX_CRearCamManager();
 
-	pstRearCamManager->InitRearCamManager(p_VipInfo, p_dspInfo, p_deinterInfo);
+	ret = pstRearCamManager->InitRearCamManager(p_VipInfo, p_dspInfo, p_deinterInfo);
+	if( 0 > ret )
+		return NULL;
 
 	return (void*)pstRearCamManager;
 }

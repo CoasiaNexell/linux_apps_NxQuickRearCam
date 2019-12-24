@@ -217,7 +217,7 @@ int32_t NX_CDeinterlaceFilter::Run( void )
 		m_bThreadRun = true;
 
 #ifdef ADJUST_THREAD_PRIORITY
-		NX_AdjustThreadPriority(&thread_attrs, SCHED_RR, 50);
+		NX_AdjustThreadPriority(&thread_attrs, SCHED_RR, THREAD_PRIORITY);
 
 		if( 0 > pthread_create( &this->m_hThread, &thread_attrs, this->ThreadStub, this ) ) {
 			NxDbgMsg( NX_DBG_ERR, "Fail, Create Thread.\n" );
@@ -383,23 +383,23 @@ void NX_CDeinterlaceFilter::ThreadProc( void )
 	while( m_bThreadRun )
 	{
 		if( 0 > m_pInputPin->GetSample( &pInSample) ) {
-			NxDbgMsg( NX_DBG_WARN, "Fail, GetSample().\n" );
+			//NxDbgMsg( NX_DBG_WARN, "Fail, GetSample().\n" );
 			continue;
 		}
 
 		if( NULL == pInSample ) {
-			NxDbgMsg( NX_DBG_WARN, "Fail, Sample is NULL.\n" );
+			//NxDbgMsg( NX_DBG_WARN, "Fail, Sample is NULL.\n" );
 			continue;
 		}
 
 		if( 0 > m_pOutputPin->GetDeliverySample( &pOutSample ) ) {
-			NxDbgMsg( NX_DBG_WARN, "Fail, GetDeliverySample().\n" );
+			//NxDbgMsg( NX_DBG_WARN, "Fail, GetDeliverySample().\n" );
 			pInSample->Unlock();
 			continue;
 		}
 
 		if( NULL == pOutSample ) {
-			NxDbgMsg( NX_DBG_WARN, "Fail, Sample is NULL.\n" );
+			//NxDbgMsg( NX_DBG_WARN, "Fail, Sample is NULL.\n" );
 			pInSample->Unlock();
 			continue;
 		}

@@ -4,6 +4,8 @@
 #include <stdint.h>
 #include <pthread.h>
 
+#define THREAD_PRIORITY	50
+
 
 
 int32_t NX_AdjustThreadPriority( pthread_attr_t *thread_attrs, int32_t policy, int32_t priority );

@@ -175,7 +175,7 @@ int32_t NX_CVideoRenderFilter::Run( void )
 
 
 #ifdef ADJUST_THREAD_PRIORITY
-		NX_AdjustThreadPriority(&thread_attrs, SCHED_RR, 50);
+		NX_AdjustThreadPriority(&thread_attrs, SCHED_RR, THREAD_PRIORITY);
 
 		if( 0 > pthread_create( &this->m_hThread, &thread_attrs, this->ThreadStub, this ) ) {
 			NxDbgMsg( NX_DBG_ERR, "Fail, Create Thread.\n" );
@@ -199,8 +199,6 @@ int32_t NX_CVideoRenderFilter::Stop( void )
 {
 	NxDbgMsg( NX_DBG_VBS, "%s()++\n", __FUNCTION__ );
 	NX_CAutoLock lock( &m_hLock );
-
-	DspVideoSetPriority(2);
 
 	if( true == m_bRun )
 	{
@@ -228,6 +226,8 @@ int32_t NX_CVideoRenderFilter::Stop( void )
 			}
 		}
 	}
+
+	DspVideoSetPriority(2);
 
 	NxDbgMsg( NX_DBG_VBS, "%s()--\n", __FUNCTION__ );
 	return 0;
@@ -384,7 +384,7 @@ int32_t NX_CVideoRenderFilter::Init( /*NX_DISPLAY_INFO *pDspInfo*/ )
 			struct dp_plane *plane;
 			uint32_t format;
 			int err;
-			int d_idx = 0, p_idx = 1;
+			int d_idx = 0, p_idx = 0;
 
 			plane = dp_device_find_plane_by_index(drm_device, d_idx, p_idx);
 			if (!plane) {
@@ -673,6 +673,7 @@ void NX_CVideoRenderFilter::ThreadProc( void )
 	NxDbgMsg( NX_DBG_VBS, "%s()++\n", __FUNCTION__ );
 
 	NX_CSample *pSample = NULL;
+	NX_CSample *pPrevSample = NULL;
 
 #if STREAM_CAPTURE
 	pf_dump = fopen("/sdcard/interlace_test/dump.yuv", "wb");
@@ -691,19 +692,22 @@ void NX_CVideoRenderFilter::ThreadProc( void )
 	while( m_bThreadRun )
 	{
 		if( 0 > m_pInputPin->GetSample( &pSample) ) {
-			NxDbgMsg( NX_DBG_WARN, "Fail, GetSample().\n" );
+			//NxDbgMsg( NX_DBG_WARN, "Fail, GetSample().\n" );
 			continue;
 		}
 
 		if( NULL == pSample ) {
-			NxDbgMsg( NX_DBG_WARN, "Fail, Sample is NULL.\n" );
+			//NxDbgMsg( NX_DBG_WARN, "Fail, Sample is NULL.\n" );
 			continue;
 		}
 
 		{
 			Render( pSample );
 
-			pSample->Unlock();
+			if( NULL != pPrevSample )
+				pPrevSample->Unlock();
+
+			pPrevSample = pSample;
 
 		}
 #if DISPLAY_FPS
@@ -718,6 +722,10 @@ void NX_CVideoRenderFilter::ThreadProc( void )
 		}
 
 #endif
+	}
+	if( NULL != pPrevSample )
+	{
+		pPrevSample->Unlock();
 	}
 
 	NxDbgMsg( NX_DBG_VBS, "%s()--\n", __FUNCTION__ );

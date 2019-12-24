@@ -152,23 +152,15 @@ int32_t NX_CV4l2VipFilter::Run( void )
 		if( m_pOutputPin && m_pOutputPin->IsConnected() )
 			m_pOutputPin->Active();
 
-		ret = V4l2CamInit();
-		if(ret < 0)
-		{
-			printf("V4l2CameraInit Fail\n");
-			return -1;
-		}
-
 		m_pOutputPin->AllocateBuffer( MAX_OUTPUT_NUM );
 
 		m_pReleaseQueue = new NX_CQueue();
 		m_pReleaseQueue->Reset();
 
-
 		m_bThreadRun = true;
 
 #ifdef ADJUST_THREAD_PRIORITY
-		NX_AdjustThreadPriority(&thread_attrs, SCHED_RR, 50);
+		NX_AdjustThreadPriority(&thread_attrs, SCHED_RR, THREAD_PRIORITY);
 
 		if( 0 > pthread_create( &this->m_hThread, &thread_attrs, this->ThreadStub, this ) ) {
 			NxDbgMsg( NX_DBG_ERR, "Fail, Create Thread.\n" );
@@ -210,8 +202,8 @@ int32_t NX_CV4l2VipFilter::Stop( void )
 	if( m_pV4l2Camera )
 	{
 		m_pV4l2Camera->Deinit();
-		delete m_pV4l2Camera;
-		m_pV4l2Camera = NULL;
+		// delete m_pV4l2Camera;
+		// m_pV4l2Camera = NULL;
 	}
 
 	m_pOutputPin->FreeBuffer();
@@ -383,6 +375,8 @@ int32_t NX_CV4l2VipFilter::Init( void )
 	else
  		allocWidth = ALLINEDN(pInfo->iWidth, 64);
 
+	m_pV4l2Camera = new NX_CV4l2Camera();
+
 #ifdef ANDROID_SURF_RENDERING
 	if(m_pAndroidRender == NULL)
 #endif
@@ -463,25 +457,13 @@ int32_t NX_CV4l2VipFilter::Deinit( void )
 {
 	NxDbgMsg( NX_DBG_VBS, "%s()++\n", __FUNCTION__ );
 
-#ifdef ANDROID_SURF_RENDERING
-	if(m_hVideoMemory )
+	if( m_pV4l2Camera )
 	{
-		for( int32_t i = 0; i < MAX_OUTPUT_NUM; i++ )
-		{
-			if( m_hVideoMemory[i] )
-			{
-				if(m_pAndroidRender == NULL)
-					NX_FreeVideoMemory( m_hVideoMemory[i] );
-
-				m_hVideoMemory[i] = NULL;
-			}
-		}
-		if(m_pAndroidRender == NULL)
-			free( m_hVideoMemory );
-
-		m_hVideoMemory = NULL;
+		delete m_pV4l2Camera;
+		m_pV4l2Camera = NULL;
 	}
-#else
+
+#ifndef ANDROID_SURF_RENDERING
 	if(m_hVideoMemory )
 	{
 		for( int32_t i = 0; i < MAX_OUTPUT_NUM; i++ )
@@ -517,6 +499,7 @@ void NX_CV4l2VipFilter::VipQueueBuffer( int32_t bufIndex )
 void NX_CV4l2VipFilter::ThreadProc( void )
 {
 	int32_t bufIdx = -1;
+	int32_t ret = 0;
 
 #if DISPLAY_FPS
 	double iStartTime = 0;
@@ -526,6 +509,13 @@ void NX_CV4l2VipFilter::ThreadProc( void )
 	int32_t iGatheringCnt = 100;
 	iStartTime = now_ms();
 #endif
+
+	ret = V4l2CamInit();
+	if(ret < 0)
+	{
+		printf("V4l2CameraInit Fail\n");
+		m_bThreadRun = false;
+	}
 
 	while( m_bThreadRun )
 	{
@@ -555,12 +545,12 @@ void NX_CV4l2VipFilter::ThreadProc( void )
 
 			NX_CSample *pSample = NULL;
 			if( 0 > m_pOutputPin->GetDeliverySample( &pSample ) ) {
-				NxDbgMsg( NX_DBG_WARN, "Fail, GetDeliverySample().\n" );
+				//NxDbgMsg( NX_DBG_WARN, "Fail, GetDeliverySample().\n" );
 				continue;
 			}
 
 			if( NULL == pSample ) {
-				NxDbgMsg( NX_DBG_WARN, "Fail, Sample is NULL.\n" );
+				//NxDbgMsg( NX_DBG_WARN, "Fail, Sample is NULL.\n" );
 				continue;
 			}
 

@@ -357,7 +357,7 @@ int32_t main( int argc, char **argv )
 #endif
 
 
-	void *pQuickRearCamHandle;
+	void *pQuickRearCamHandle = NULL;
 	NX_REARCAM_INFO vip_info;       // camera info
 	DISPLAY_INFO dsp_info;          // display info for rendering camera data
 	DEINTERLACE_INFO deinter_info;  // deinterlace info
@@ -453,6 +453,11 @@ int32_t main( int argc, char **argv )
 
 	//-------- get rear cam handle---------------------------
 	pQuickRearCamHandle = NX_QuickRearCamGetHandle(&vip_info, &dsp_info, &deinter_info);
+	if(pQuickRearCamHandle == NULL)
+	{
+		printf("Fail, Get QuickRearCam Handle\n");
+		return 0;
+	}
 
 
 	//-------- for backgear detecting------------------------
@@ -541,7 +546,7 @@ int32_t main( int argc, char **argv )
 
 
 	pgl_dsp_info.m_MemDevFd = NX_QuickRearCamGetMemDevFd(pQuickRearCamHandle);
-	pgl_dsp_info.drmFd		= NX_QuickRearCamGetDPDevFd(pQuickRearCamHandle);
+	pgl_dsp_info.drmFd	= NX_QuickRearCamGetDPDevFd(pQuickRearCamHandle);
 
 	//-------- Alloc PGL Buffer------------------------------
 	m_pPGLDraw->AllocBuffer(&pgl_dsp_info);

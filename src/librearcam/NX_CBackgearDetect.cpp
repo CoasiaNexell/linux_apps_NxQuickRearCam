@@ -143,7 +143,7 @@ int32_t NX_CBackgearDetect::StartService( int32_t nGpio, int32_t nChkDelay, int3
 	{
 		m_bThreadRun = true;
 #ifdef ADJUST_THREAD_PRIORITY
-		NX_AdjustThreadPriority(&thread_attrs, SCHED_RR, 50);
+		NX_AdjustThreadPriority(&thread_attrs, SCHED_RR, THREAD_PRIORITY);
 
 		if( 0 > pthread_create( &this->m_hThread, &thread_attrs, this->ThreadStub, this ) ) {
 				NxDbgMsg( NX_DBG_ERR, "Fail, Create Thread.\n" );

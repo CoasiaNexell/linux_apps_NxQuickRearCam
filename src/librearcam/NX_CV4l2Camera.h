@@ -25,7 +25,8 @@
 #include <stdint.h>
 #include <pthread.h>
 
-#include <nx_video_api.h>
+//#include <nx_video_api.h>
+#include <nxp_video_alloc.h>
 #include <nx-v4l2.h>
 //#include <nx-drm-allocator.h>
 

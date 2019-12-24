@@ -76,16 +76,14 @@ private:
 
 
 private:
-	//enum { MAX_INPUT_NUM = 256, MAX_OUTPUT_NUM = 8 };
-	enum { MAX_INPUT_NUM = 256, MAX_OUTPUT_NUM = 6 };
+	enum { MAX_INPUT_NUM = 256, MAX_OUTPUT_NUM = 4 };
 	enum { MAX_FILENAME_SIZE = 1024 };
-	//enum { MAX_NUM_BUFFER=32, NUM_BUFFER=8 };
-	enum { MAX_NUM_BUFFER=32, NUM_BUFFER=6 };
+	enum { MAX_NUM_BUFFER=32, NUM_BUFFER=4 };
 
 	NX_CV4l2VipOutputPin*	m_pOutputPin;
 
 	pthread_t		m_hThread;
-	pthread_attr_t thread_attrs;
+	pthread_attr_t 		thread_attrs;
 
 	int32_t			m_bThreadRun;
 	int32_t			m_bPause;
