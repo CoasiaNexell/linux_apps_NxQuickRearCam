@@ -55,8 +55,8 @@
 //#define AGING_TEST
 
 #ifndef ANDROID
-#define STOP_COMMAND_CTRL_FILE_PATH	"/product/rearcam_cmd"
-#define STATUS_CTRL_FILE_PATH		"/product/rearcam_status"
+#define STOP_COMMAND_CTRL_FILE_PATH	"/mnt/rearcam_cmd"
+#define STATUS_CTRL_FILE_PATH		"/mnt/rearcam_status"
 #else
 #define STOP_COMMAND_CTRL_FILE_PATH	"/data/data/quickrearcam_cmd"
 #define STATUS_CTRL_FILE_PATH		"/data/data/quickrearcam_status"

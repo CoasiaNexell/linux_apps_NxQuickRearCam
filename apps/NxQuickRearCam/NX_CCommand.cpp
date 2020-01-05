@@ -125,9 +125,6 @@ void NX_CCommand::StopService()
 #endif
 	pthread_join( m_hThread, NULL );
 	m_bThreadRun = false;
-
-	close( fd_cmd );
-	remove(m_pStopCmdFileName);
 }
 
 void  NX_CCommand::ThreadProc()
