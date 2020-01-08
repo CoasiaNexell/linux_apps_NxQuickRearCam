@@ -7,13 +7,13 @@ function usage()
 	echo "  -t : all build"
 	echo "  -c : build clean"
 	echo "  -p : build private lib"
-	echo "  -r : build nxrearcam lib"
+	echo "  -r : build libnxquickrearcam"
 }
 
 function build_clean()
 {
 	rm $SCRIPT_PATH/NxQuickRearCam
-	rm $SCRIPT_PATH/lib/linux/libnxrearcam.a
+	rm $SCRIPT_PATH/lib/linux/libnxquickrearcam.a
 	cd $SCRIPT_PATH/src/librearcam
 	make clean
 
@@ -53,7 +53,7 @@ function build_private()
 
 function build_rearcam()
 {
-	rm $SCRIPT_PATH/lib/linux/libnxrearcam.a
+	rm $SCRIPT_PATH/lib/linux/libnxquickrearcam.a
 	cd $SCRIPT_PATH/src/librearcam
 	make clean
 	make -j 8

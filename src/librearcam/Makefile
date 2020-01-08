@@ -53,7 +53,7 @@ OBJS		+=	NX_CRearCamManager.o \
 #																		#
 #########################################################################
 # Target
-TARGET		:= libnxrearcam.a
+TARGET		:= libnxquickrearcam.a
 
 ######################################################################
 # Build

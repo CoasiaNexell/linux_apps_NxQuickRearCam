@@ -57,7 +57,7 @@ LOCAL_CFLAGS	+= -DTHUNDER_DEINTERLACE_TEST -DADJUST_THREAD_PRIORITY
 #								Target									#
 #																		#
 #########################################################################
-LOCAL_MODULE		:= libnxrearcam
+LOCAL_MODULE		:= libnxquickrearcam
 LOCAL_MODULE_PATH	:= $(LOCAL_PATH)
 
 LOCAL_MODULE_TAGS	:= optional

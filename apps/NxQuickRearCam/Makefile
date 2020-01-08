@@ -42,7 +42,7 @@ LDFLAGS += \
 	-L$(SDKTARGETSYSROOT)/usr/lib \
 
 LIBS += -lrt -lpthread 
-LIBS += -lnxrearcam -lnxv4l2 -ldrm 
+LIBS += -lnxquickrearcam -lnxv4l2 -ldrm 
 LIBS += -lnxdeinterlace -ltsdeinterlacer
 
 #COBJS  = 
