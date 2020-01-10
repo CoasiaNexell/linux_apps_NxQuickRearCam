@@ -64,6 +64,9 @@
 #define PGL_H_LINE_NUM	3
 #define PGL_V_LINE_NUM	6
 
+#define PGL_DEFAULT_WIDTH 1920
+#define PGL_DEFAULT_HEIGHT 720
+
 typedef struct tagHLINE_INFO{
 	int32_t dsp_width;
 	int32_t start_x;
@@ -501,9 +504,9 @@ int32_t main( int argc, char **argv )
 		for(int32_t i=0; i<PGL_H_LINE_NUM; i++)
 		{
 			m_HLine_Info[i].dsp_width = pgl_dsp_info.m_iDspWidth;
-			m_HLine_Info[i].start_x = (pgl_dsp_info.m_iDspWidth/2) - (dsp_info.iDspWidth /PGL_H_LINE_NUM)/2 - 90*i;
-			m_HLine_Info[i].start_y = dsp_info.iDspHeight / 2 + 90*i;
-			m_HLine_Info[i].length = (dsp_info.iDspWidth /PGL_H_LINE_NUM) + (90*2)*i;
+			m_HLine_Info[i].start_x = (pgl_dsp_info.m_iDspWidth/2) - (dsp_info.iDspWidth /PGL_H_LINE_NUM)/2 - ((90*pgl_dsp_info.m_iDspWidth)/PGL_DEFAULT_WIDTH)*i;
+			m_HLine_Info[i].start_y = dsp_info.iDspHeight / 2 + ((90*pgl_dsp_info.m_iDspHeight)/PGL_DEFAULT_HEIGHT)*i;
+			m_HLine_Info[i].length = (dsp_info.iDspWidth /PGL_H_LINE_NUM) + (((90*pgl_dsp_info.m_iDspWidth)/PGL_DEFAULT_WIDTH)*2)*i;
 			m_HLine_Info[i].thickness =  10;
 			if(i == 0)
 				m_HLine_Info[i].color = ARGB_COLOR_GREEN;
@@ -515,7 +518,7 @@ int32_t main( int argc, char **argv )
 			m_VLine_Info[i*2].dsp_width = pgl_dsp_info.m_iDspWidth;
 			m_VLine_Info[i*2].start_x = m_HLine_Info[i].start_x;
 			m_VLine_Info[i*2].start_y = m_HLine_Info[i].start_y;
-			m_VLine_Info[i*2].end_y = m_HLine_Info[i].start_y + 90;
+			m_VLine_Info[i*2].end_y = m_HLine_Info[i].start_y + ((90*pgl_dsp_info.m_iDspHeight)/PGL_DEFAULT_HEIGHT);
 			m_VLine_Info[i*2].thickness =  10;
 			m_VLine_Info[i*2].offset_x = -1;
 			m_VLine_Info[i*2].offset_y = 1;
@@ -524,7 +527,7 @@ int32_t main( int argc, char **argv )
 			m_VLine_Info[i*2+1].dsp_width = pgl_dsp_info.m_iDspWidth;
 			m_VLine_Info[i*2+1].start_x = m_HLine_Info[i].start_x + m_HLine_Info[i].length - m_HLine_Info[i].thickness;
 			m_VLine_Info[i*2+1].start_y = m_HLine_Info[i].start_y;
-			m_VLine_Info[i*2+1].end_y = m_HLine_Info[i].start_y + 90;
+			m_VLine_Info[i*2+1].end_y = m_HLine_Info[i].start_y + ((90*pgl_dsp_info.m_iDspHeight)/PGL_DEFAULT_HEIGHT);
 			m_VLine_Info[i*2+1].thickness =  10;
 			m_VLine_Info[i*2+1].offset_x = 1;
 			m_VLine_Info[i*2+1].offset_y = 1;
