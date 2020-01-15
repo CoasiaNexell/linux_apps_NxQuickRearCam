@@ -1,9 +1,8 @@
-########################################################################
-# Get Linux Build Enviornment:
-
+ ######################################################################
+# Build options
 export TOPDIR	:=$(shell if [ "$$PWD" != "" ]; then echo $$PWD; else pwd; fi | sed s,.*users,/home/users,)
 
-
+CPPFLAGS = -Wall
 
 #########################################################################
 #																		#
@@ -12,24 +11,25 @@ export TOPDIR	:=$(shell if [ "$$PWD" != "" ]; then echo $$PWD; else pwd; fi | se
 #########################################################################
 #	Local Application Includes
 
-INCLUDES		?= \
-			-I$(TOPDIR) \
+INCLUDES		?= -I./ -I$(SDKTARGETSYSROOT)/usr/include/drm
+INCLUDES		+= -I/$(SDKTARGETSYSROOT)/usr/include/nexell \
+			-I/$(SDKTARGETSYSROOT)/usr/include/libdrm \
+			-I$(SDKTARGETSYSROOT)/usr/include \
 			-I$(TOPDIR)/../../src/common \
 			-I$(TOPDIR)/../../include \
-
-
+			-I$(TOPDIR)/../../include/drm \
+			
 #########################################################################
 #																		#
 #								Sources									#
 #																		#
 #########################################################################
 
-OBJS		:=	nx-v4l2.o \
-
-# Utils
-OBJS		+=	../../src/common/NX_DbgMsg.o \
-
-
+OBJS		:=	NX_DbgMsg.o \
+				NX_QuickRearCam.o \
+				NX_CRGBDraw.o \
+				NX_CCommand.o \
+				$(TOPDIR)/../../src/common/NX_ThreadUtils.o \
 
 #########################################################################
 #																		#
@@ -37,7 +37,12 @@ OBJS		+=	../../src/common/NX_DbgMsg.o \
 #																		#
 #########################################################################
 LDFLAGS += \
-	-L$(TOPDIR)/../../lib \
+	-L$(TOPDIR)/../../lib/linux \
+	-L$(SDKTARGETSYSROOT)/usr/lib \
+
+LIBS += -lrt -lpthread 
+LIBS += -lnxquickrearcam -lnxv4l2 -ldrm 
+LIBS += -lnxdeinterlace -ltsdeinterlacer
 
 
 #########################################################################
@@ -46,30 +51,27 @@ LDFLAGS += \
 #																		#
 #########################################################################
 # Target
-TARGET		:= libnxv4l2.a
+TARGET		:= NxQuickRearCam
+
 
 ######################################################################
 # Build
 
 CFLAGS		+= -fPIC
 CPPFLAGS	+= -fPIC -Wall
-CPPFLAGS 	+= -O3 $(INCLUDES) $(LDFLAGS) $(LIBS)
+CPPFLAGS 	+= -O3 $(INCLUDES) $(LDFLAGS) $(LIBS) -static -pthread 
 
 
-SRCS = $(OBJS:.o=.cpp)
+SRCS = $(OBJS:.o=.cpp) 
+
+$(TARGET): $(OBJS) $(COBJS)
+	$(CXX) -o $@ $(CPPFLAGS) $(INCLUDES) $(OBJS) $(LIBS) $(COBJS)
 
 
 all: $(TARGET)
-
-$(TARGET): $(OBJS)
-	$(AR) $(ARFLAGS) $(TARGET) $(OBJS)
-
-
-install:
-	cp -a $(TARGET) ../../lib/linux/
 
 
 .PHONY: clean
 
 clean :
-	rm -rf $(OBJS) $(TARGET)
+	rm -rf $(OBJS) $(TARGET) 

@@ -1,79 +1,75 @@
 ########################################################################
 # Get Linux Build Enviornment:
+#include ../../../build.env
 
 export TOPDIR	:=$(shell if [ "$$PWD" != "" ]; then echo $$PWD; else pwd; fi | sed s,.*users,/home/users,)
 
+
+LIB_INSTALL	:=	../../lib/linux
+INC_INSTALL	:= 	../../include
 
 #########################################################################
 #																		#
 #								Includes								#
 #																		#
 #########################################################################
-INCLUDE		+=  \
-			-I. \
-			-I$(TOPDIR)/../../src/common \
-			-I$(TOPDIR)/../../include \
-			-I$(TOPDIR)/../../include/drm \
+INCLUDE += -I./ -I/$(SDKTARGETSYSROOT)/usr/include/nexell \
+			-I$(TOPDIR)/include \
+
+
 
 #########################################################################
 #																		#
 #								Sources									#
 #																		#
 #########################################################################
+COBJS  	:=
+COBJS  	+= nx_deinterlace.o
+COBJS  	+= algo_basic.o
+COBJS  	+= algo_x.o
+COBJS  	+= merge.o
 
-CXXOBJS		:=	NX_CV4l2Camera.o \
-				NX_CV4l2VipFilter.o \
-				NX_CDeinterlaceFilter.o \
-				NX_CVideoRenderFilter.o \
-
-# BackGear Detection
-CXXOBJS		+=	NX_CGpioControl.o \
-				NX_CBackgearDetect.o \
-# Utils
-CXXOBJS		+=	../common/NX_DbgMsg.o \
-				../common/NX_ThreadUtils.o \
-
-# Manager
-CXXOBJS		+=	NX_CRearCamManager.o \
-
-CXXOBJS		+= nxp_video_alloc_ion.o \
-
-COBJS		:= nxp_video_alloc_drm.o \
+AOBJS	:=
+AOBJS	+= merge_arm.o
 
 #########################################################################
 #																		#
 #								Target									#
 #																		#
 #########################################################################
-# Target
-TARGET		:= libnxquickrearcam.a
-
+LIBNAME	:= libnxdeinterlace
+TARGET  := $(LIBNAME).so
 
 #########################################################################
 #																		#
 #								Build									#
 #																		#
 #########################################################################
-# Build option
-
-CFLAGS	+= -O3 -fPIC -Wall -static
-CFLAGS 	+= -DTHUNDER_DEINTERLACE_TEST
-OBJS := $(CXXOBJS) $(COBJS)
-
-
-$(TARGET): depend $(OBJS)
-	$(AR) $(ARFLAGS) $(TARGET) $(OBJS)
+CFLAGS	+= -mfpu=neon -fPIC -O3
+CFLAGS	+= -DCAN_COMPILE_ARM -D__ARM_NEON__
+AFLAGS	+= -mfpu=neon
+OBJS	:= $(COBJS) $(CPPOBJS) $(AOBJS)
 
 all: $(TARGET)
 
+$(TARGET):	depend $(OBJS)
+	$(AR) $(ARFLAGS) $(LIBNAME).a $(OBJS)
+	$(CC) $(LDFLAGS) -shared -Wl,-soname,$(TARGET) -o $@ $(OBJS) $(LIBRARY)
+
 install:
-	cp -a $(TARGET) ../../lib/linux
+	install -m 755 -d $(LIB_INSTALL)
+#	install -m 644 $(TARGET) $(LIB_INSTALL)
+	install -m 644 $(LIBNAME).a $(LIB_INSTALL)
 
+clean:
+	@find $(OBJTREE) -type f \
+		\( -name '*.o'  -o -name $(TARGET) -o -name '*.a' -o -name '*.so*' -o \
+		-name '*.bin' -o -name '*.map' -o -name 'core' -o -name '*~' -o -name \
+		'.depend' \) -print | xargs rm -f
 
-.PHONY: clean
-
-clean :
-	rm -rf $(OBJS) $(TARGET)
+distclean: clean
+	rm -f $(LIB_INSTALL)/$(TARGET)
+	rm -f $(LIB_INSTALL)/$(LIBNAME).a
 
 #########################################################################
 # Dependency
@@ -81,13 +77,7 @@ ifeq (.depend,$(wildcard .depend))
 include .depend
 endif
 
-SRCS := $(CXXOBJS:.o=.cpp) $(COBJS:.o=.c)
+SRCS := $(AOBJS:.o=.s) $(COBJS:.o=.c) $(CPPOBJS:.o=.cpp)
 INCS := $(INCLUDE)
 depend dep:
 	$(CC) -M $(CFLAGS) $(INCS) $(SRCS) > .depend
-
-%.o: %.c
-	$(CC) $(CFLAGS) $(INCS) -c -o $@ $<
-
-%.o: %.cpp
-	$(CXX) $(CFLAGS) $(INCS) -c -o $@ $<

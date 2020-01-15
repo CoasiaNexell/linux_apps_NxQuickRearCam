@@ -4,16 +4,21 @@
 export TOPDIR	:=$(shell if [ "$$PWD" != "" ]; then echo $$PWD; else pwd; fi | sed s,.*users,/home/users,)
 
 
+
 #########################################################################
 #																		#
 #								Includes								#
 #																		#
 #########################################################################
-INCLUDE		+=  \
-			-I. \
+#	Local Application Includes
+
+INCLUDES		?= -I./ -I$(SDKTARGETSYSROOT)/usr/include/drm
+INCLUDES		+= -I/$(SDKTARGETSYSROOT)/usr/include/nexell \
+			-I/$(SDKTARGETSYSROOT)/usr/include/libdrm \
+			-I$(TOPDIR) \
 			-I$(TOPDIR)/../../src/common \
 			-I$(TOPDIR)/../../include \
-			-I$(TOPDIR)/../../include/drm \
+
 
 #########################################################################
 #																		#
@@ -21,24 +26,26 @@ INCLUDE		+=  \
 #																		#
 #########################################################################
 
-CXXOBJS		:=	NX_CV4l2Camera.o \
+OBJS		:=	NX_CV4l2Camera.o \
 				NX_CV4l2VipFilter.o \
 				NX_CDeinterlaceFilter.o \
 				NX_CVideoRenderFilter.o \
+				nxp_video_alloc_drm.o \
+				nxp_video_alloc_ion.o \
+#				parking_line.o \
+
 
 # BackGear Detection
-CXXOBJS		+=	NX_CGpioControl.o \
+OBJS		+=	NX_CGpioControl.o \
 				NX_CBackgearDetect.o \
 # Utils
-CXXOBJS		+=	../common/NX_DbgMsg.o \
+OBJS		+=	../common/NX_DbgMsg.o \
 				../common/NX_ThreadUtils.o \
 
 # Manager
-CXXOBJS		+=	NX_CRearCamManager.o \
+OBJS		+=	NX_CRearCamManager.o \
 
-CXXOBJS		+= nxp_video_alloc_ion.o \
 
-COBJS		:= nxp_video_alloc_drm.o \
 
 #########################################################################
 #																		#
@@ -48,20 +55,18 @@ COBJS		:= nxp_video_alloc_drm.o \
 # Target
 TARGET		:= libnxquickrearcam.a
 
+######################################################################
+# Build
 
-#########################################################################
-#																		#
-#								Build									#
-#																		#
-#########################################################################
-# Build option
+CFLAGS		+= -fPIC
+CPPFLAGS	+= -fPIC -Wall
+CPPFLAGS 	+= -O3 $(INCLUDES) $(LDFLAGS) $(LIBS) -static -pthread
+CPPFLAGS 	+= -DTHUNDER_DEINTERLACE_TEST
 
-CFLAGS	+= -O3 -fPIC -Wall -static
-CFLAGS 	+= -DTHUNDER_DEINTERLACE_TEST
-OBJS := $(CXXOBJS) $(COBJS)
+SRCS = $(OBJS:.o=.cpp)
 
 
-$(TARGET): depend $(OBJS)
+$(TARGET): $(OBJS)
 	$(AR) $(ARFLAGS) $(TARGET) $(OBJS)
 
 all: $(TARGET)
@@ -74,20 +79,3 @@ install:
 
 clean :
 	rm -rf $(OBJS) $(TARGET)
-
-#########################################################################
-# Dependency
-ifeq (.depend,$(wildcard .depend))
-include .depend
-endif
-
-SRCS := $(CXXOBJS:.o=.cpp) $(COBJS:.o=.c)
-INCS := $(INCLUDE)
-depend dep:
-	$(CC) -M $(CFLAGS) $(INCS) $(SRCS) > .depend
-
-%.o: %.c
-	$(CC) $(CFLAGS) $(INCS) -c -o $@ $<
-
-%.o: %.cpp
-	$(CXX) $(CFLAGS) $(INCS) -c -o $@ $<

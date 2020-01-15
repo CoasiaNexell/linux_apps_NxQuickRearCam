@@ -1,6 +1,5 @@
 ########################################################################
 # Get Linux Build Enviornment:
-#include ../../../build.env
 
 export TOPDIR	:=$(shell if [ "$$PWD" != "" ]; then echo $$PWD; else pwd; fi | sed s,.*users,/home/users,)
 
@@ -8,18 +7,20 @@ export TOPDIR	:=$(shell if [ "$$PWD" != "" ]; then echo $$PWD; else pwd; fi | se
 LIB_INSTALL	:=	../../lib/linux
 INC_INSTALL	:= 	../../include
 
-######################################################################
-# Build options
-CFLAGS	+= -mfpu=neon -fPIC -O3
-CFLAGS	+= -DCAN_COMPILE_ARM -D__ARM_NEON__
-AFLAGS	+= -mfpu=neon
+#########################################################################
+#																		#
+#								Includes								#
+#																		#
+#########################################################################
 
-INCLUDE += -I./ -I/$(SDKTARGETSYSROOT)/usr/include/nexell \
-			-I$(TOPDIR)/include \
+INCLUDE += -I./ -I$(TOPDIR)/include \
 
 
-######################################################################
-# Target
+#########################################################################
+#																		#
+#								Sources									#
+#																		#
+#########################################################################
 COBJS  	:=
 COBJS  	+= nx_deinterlace.o
 COBJS  	+= algo_basic.o
@@ -29,11 +30,24 @@ COBJS  	+= merge.o
 AOBJS	:=
 AOBJS	+= merge_arm.o
 
+
+#########################################################################
+#																		#
+#								Target									#
+#																		#
+#########################################################################
 LIBNAME	:= libnxdeinterlace
 TARGET  := $(LIBNAME).so
 
-######################################################################
-# Build
+#########################################################################
+#																		#
+#								Build									#
+#																		#
+#########################################################################
+# Build option
+CFLAGS	+= -mfpu=neon -fPIC -O3
+CFLAGS	+= -DCAN_COMPILE_ARM -D__ARM_NEON__
+AFLAGS	+= -mfpu=neon
 OBJS	:= $(COBJS) $(CPPOBJS) $(AOBJS)
 
 all: $(TARGET)
