@@ -192,6 +192,9 @@ static void cbQuickRearCamCommand( int32_t command )
 	if(command == STOP)
 	{
 		received_stop_cmd = true;
+#ifdef ANDROID
+		remove(STOP_COMMAND_CTRL_FILE_PATH);
+#endif
 	}
 }
 //-----------------------------------------------------------------------------
