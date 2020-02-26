@@ -138,7 +138,11 @@ int32_t NX_CRearCamManager::InitRearCamManager(NX_REARCAM_INFO *pInfo , DISPLAY_
 
 	//device open--------------------------------------------------------------------------
 #ifdef USE_ION_ALLOCATOR
+#ifndef DEV_QUICK
 	m_MemDevFd = open( "/dev/ion", O_RDWR );
+#else
+	m_MemDevFd = open( "/dev_q/ion", O_RDWR );
+#endif
 #else
 	m_MemDevFd = drmOpen( "nexell", NULL );
 #endif

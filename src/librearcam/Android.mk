@@ -9,6 +9,7 @@ include $(CLEAR_VARS)
 #########################################################################
 LOCAL_C_INCLUDES        += \
 	external/libdrm \
+	external/libdrm/include/drm  \
 	hardware/nexell/s5pxx18/gralloc	\
 	device/nexell/library/nx-video-api/src \
 	device/nexell/library/nx-renderer/include \
@@ -16,7 +17,6 @@ LOCAL_C_INCLUDES        += \
 	frameworks/native/include\
 	$(LOCAL_PATH)/../common \
 	$(LOCAL_PATH)/../../include \
-	$(LOCAL_PATH)/../../include/drm \
 	$(LOCAL_PATH)
 
 #########################################################################
@@ -51,6 +51,11 @@ LOCAL_SRC_FILES			+= \
 #																		#
 #########################################################################
 LOCAL_CFLAGS	+= -DTHUNDER_DEINTERLACE_TEST -DADJUST_THREAD_PRIORITY
+
+ifdef	QUICKBOOT
+LOCAL_CFLAGS += -DDEV_QUICK
+endif
+
 
 #########################################################################
 #																		#

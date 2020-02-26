@@ -50,7 +50,15 @@ LOCAL_FORCE_STATIC_EXECUTABLE := true
 
 LOCAL_STATIC_LIBRARIES += liblog libdrm
 
-LOCAL_STATIC_LIBRARIES += libnxquickrearcam libnxdeinterlace libnx_v4l2 libnx_renderer
+LOCAL_STATIC_LIBRARIES += libnxquickrearcam libnxdeinterlace libnx_renderer
+
+ifdef	QUICKBOOT
+LOCAL_STATIC_LIBRARIES += libnx_v4l2_q
+endif
+
+ifndef QUICKBOOT
+LOCAL_STATIC_LIBRARIES += libnx_v4l2
+endif
 
 LOCAL_STATIC_LIBRARIES += libdeinterlacer_static
 

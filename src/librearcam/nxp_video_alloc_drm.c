@@ -29,7 +29,11 @@
 #include "videodev2.h"
 #include <videodev2_nxp_media.h>
 
+#ifndef DEV_QUICK
 #define DRM_DEVICE_NAME "/dev/dri/card0"
+#else
+#define DRM_DEVICE_NAME "/dev_q/dri/card0"
+#endif
 
 #define DRM_IOCTL_NR(n)         _IOC_NR(n)
 #define DRM_IOC_VOID            _IOC_NONE

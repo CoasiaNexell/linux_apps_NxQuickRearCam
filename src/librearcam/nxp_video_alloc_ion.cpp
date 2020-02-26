@@ -30,7 +30,11 @@
 //#include <nx_video_alloc.h>
 #include <nxp_video_alloc.h>
 
+#ifndef DEV_QUICK
 #define ION_DEVICE_NAME			"/dev/ion"
+#else
+#define ION_DEVICE_NAME			"/dev_q/ion"
+#endif
 #define ION_HEAP_TYPE_MASK		ION_HEAP_TYPE_DMA_MASK
 
 #ifndef ALIGN
