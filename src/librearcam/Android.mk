@@ -2,6 +2,9 @@ LOCAL_PATH		:= $(call my-dir)
 
 include $(CLEAR_VARS)
 
+ANDROID_VERSION_STR := $(PLATFORM_VERSION)
+ANDROID_VERSION := $(firstword $(ANDROID_VERSION_STR))
+
 #########################################################################
 #																		#
 #								Sources									#
@@ -11,13 +14,22 @@ LOCAL_C_INCLUDES        += \
 	external/libdrm \
 	external/libdrm/include/drm  \
 	hardware/nexell/s5pxx18/gralloc	\
-	device/nexell/library/nx-video-api/src \
-	device/nexell/library/nx-renderer/include \
 	linux/platform/$(TARGET_CPU_VARIANT2)/library/include	\
 	frameworks/native/include\
 	$(LOCAL_PATH)/../common \
 	$(LOCAL_PATH)/../../include \
 	$(LOCAL_PATH)
+
+ifeq ($(ANDROID_VERSION), 9)
+LOCAL_C_INCLUDES        += \
+	vendor/nexell/library/nx-video-api/src \
+	vendor/nexell/library/nx-renderer/include
+else
+LOCAL_C_INCLUDES        += \
+	device/nexell/library/nx-video-api/src \
+	device/nexell/library/nx-renderer/include
+endif
+
 
 #########################################################################
 #																		#
