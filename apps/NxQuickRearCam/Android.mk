@@ -3,6 +3,9 @@ LOCAL_PATH		:= $(call my-dir)
 NX_INC_TOP		:= $(LOCAL_PATH)/../../include
 NX_LIB_TOP		:= $(LOCAL_PATH)/../../lib/android
 
+ANDROID_VERSION_STR := $(PLATFORM_VERSION)
+ANDROID_VERSION := $(firstword $(ANDROID_VERSION_STR))
+
 
 include $(CLEAR_VARS)
 LOCAL_MODULE    := libdeinterlacer_static
@@ -53,7 +56,11 @@ LOCAL_STATIC_LIBRARIES += liblog libdrm
 LOCAL_STATIC_LIBRARIES += libnxquickrearcam libnxdeinterlace libnx_renderer
 
 ifdef	QUICKBOOT
+ifeq ($(ANDROID_VERSION), 9)
+LOCAL_STATIC_LIBRARIES += libnx_v4l2
+else
 LOCAL_STATIC_LIBRARIES += libnx_v4l2_q
+endif
 endif
 
 ifndef QUICKBOOT
