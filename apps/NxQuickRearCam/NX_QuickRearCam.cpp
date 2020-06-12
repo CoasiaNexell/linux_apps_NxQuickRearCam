@@ -144,6 +144,7 @@ static void PrintUsage( const char *appName )
 	fprintf(stdout, "     -m module          : camera module                                    ex) -m 0\n");
 	fprintf(stdout, "     -g gpio            : gpio idx for backgear detection                  ex) -g 71\n");
 	fprintf(stdout, "     -b backgear        : backgear detection (enagble : 1, disable : 0)    ex) -b 0\n");
+	fprintf(stdout, "     -n connectorID     : connector Id                                     ex) -n 41\n");
 	fprintf(stdout, "     -c crtcID          : crtc ID                                          ex) -c 26\n");
 	fprintf(stdout, "     -v planeID         : video layer for Cam                              ex) -v 27\n");
 	fprintf(stdout, "     -p planeID         : rgb layer for PGL                                ex) -p 18\n");
@@ -200,7 +201,7 @@ static void cbQuickRearCamCommand( int32_t command )
 //-----------------------------------------------------------------------------
 
 //------------------------------------------------------------------------------
-static char optstr[] = "hm:i:g:b:c:v:p:r:d:l:s:D:R:P:L:";
+static char optstr[] = "hm:i:g:b:n:c:v:p:r:d:l:s:D:R:P:L:";
 
 int32_t main( int argc, char **argv )
 {
@@ -264,6 +265,11 @@ int32_t main( int argc, char **argv )
 		case 'b' :  //backgear detect enable/disable
 			arg = optarg;
 			backgear_enable = atoi(arg);
+			break;
+		case 'n' :  //connector ID for display
+			arg = optarg;
+			connectorId = atoi(arg);
+			NxDbgMsg( NX_DBG_INFO, "[QuickRearCam] connectorID : %d\n", connectorId);
 			break;
 		case 'c' :  //crtc ID for display
 			arg = optarg;
