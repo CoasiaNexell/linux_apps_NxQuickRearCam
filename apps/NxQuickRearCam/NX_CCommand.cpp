@@ -148,7 +148,7 @@ void  NX_CCommand::ThreadProc()
 		poll_fds.fd = fd_cmd;
 		poll_fds.events = POLLIN;
 
-		poll_ret = poll( &poll_fds, 2, POLL_TIMEOUT_MS );
+		poll_ret = poll( &poll_fds, 1, POLL_TIMEOUT_MS );
 		if( poll_ret == 0 )
 		{
 			//printf("Poll Timeout\n");
