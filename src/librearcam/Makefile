@@ -57,7 +57,7 @@ TARGET		:= libnxquickrearcam.a
 # Build option
 
 CFLAGS	+= -O3 -fPIC -Wall -static
-CFLAGS 	+= -DTHUNDER_DEINTERLACE_TEST
+#CFLAGS 	+= -DTHUNDER_DEINTERLACE_TEST
 OBJS := $(CXXOBJS) $(COBJS)
 
 
