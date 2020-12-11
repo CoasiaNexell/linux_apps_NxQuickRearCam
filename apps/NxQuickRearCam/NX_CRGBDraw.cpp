@@ -49,16 +49,59 @@ NX_CRGBDraw::~NX_CRGBDraw(){
 void NX_CRGBDraw::AllocBuffer(NX_RGB_DRAW_INFO *pInfo)
 {
 	int32_t mem_size;
+    drmModeRes *res;
+	drmModePlaneRes *plane_res;
+	struct drm_mode_create_dumb create;
+    struct drm_mode_map_dumb map;
 
 	mem_size = pInfo->m_iDspWidth * pInfo->m_iDspHeight * 4;
 
+	memset(&m_DspInfo, 0, sizeof(NX_RGB_DRAW_INFO));
+
+	if(pInfo->drmFd < 0)
+		m_DspInfo.drmFd = drmOpen( "nexell", NULL );
+	else
+	{
+		m_DspInfo.drmFd = pInfo->drmFd;
+	}
+
 	for(int i=0; i<pInfo->m_iNumBuffer; i++)
 	{
-		pRGBData[i] = NX_AllocateMemory(pInfo->m_MemDevFd, mem_size, pInfo->m_iDspWidth * 4);
-		NX_MapMemory(pRGBData[i]);
+		// Get crtc_id & conn_id
+		res = drmModeGetResources(m_DspInfo.drmFd);
+		m_MemInfo[i].crtc_id = res->crtcs[i];
+		m_MemInfo[i].conn_id = res->connectors[i];
+
+		// Get conn pointer
+		m_MemInfo[i].conn = drmModeGetConnector(m_DspInfo.drmFd, m_MemInfo[i].conn_id);
+		m_MemInfo[i].width = m_MemInfo[i].conn->modes[i].hdisplay;
+		m_MemInfo[i].height = m_MemInfo[i].conn->modes[i].vdisplay;
+
+		/* create a dumb-buffer, the pixel format is XRGB888 */
+		create.width = m_MemInfo[i].width;
+		create.height = m_MemInfo[i].height;
+		create.bpp = 32;
+		drmIoctl(m_DspInfo.drmFd, DRM_IOCTL_MODE_CREATE_DUMB, &create);
+		m_MemInfo[i].pitch = create.pitch;
+		m_MemInfo[i].size = create.size;
+		m_MemInfo[i].handle = create.handle;
+
+		/* map the dumb-buffer to userspace */
+		map.handle = create.handle;
+		drmIoctl(m_DspInfo.drmFd, DRM_IOCTL_MODE_MAP_DUMB, &map);
+		m_MemInfo[i].pBuffer = mmap(0, create.size, PROT_READ | PROT_WRITE, \
+				MAP_SHARED, m_DspInfo.drmFd, map.offset);
 		m_MemInfo[i].mem_size = ALIGN(mem_size, pInfo->m_iDspWidth * 4);
-		m_MemInfo[i].pBuffer = pRGBData[i]->pBuffer;
 	}
+
+	// Primary layer1 - pixel format is XRGB8888, depth(24), bpp(32)
+	printf("=== <Alloc> drmModeAddFB : fd(%d) ===\n", m_DspInfo.drmFd);
+	drmModeAddFB(m_DspInfo.drmFd, m_MemInfo[0].width, m_MemInfo[0].height, 24, 32, m_MemInfo[0].pitch, \
+			m_MemInfo[0].handle, &m_MemInfo[0].fb_id);
+
+	printf("=== <Alloc> drmModeSetCrtc : crtcId(%d), fb_id(%d) ===\n", m_MemInfo[0].crtc_id, m_MemInfo[0].fb_id);
+	drmModeSetCrtc(m_DspInfo.drmFd, m_MemInfo[0].crtc_id, m_MemInfo[0].fb_id, 0, 0, &m_MemInfo[0].conn_id, 1, &m_MemInfo[0].conn->modes[0]);
+
 }
 
 void NX_CRGBDraw::FreeBuffer()
@@ -118,20 +161,17 @@ void NX_CRGBDraw::Deinit( void )
 	if( m_DspInfo.drmFd > 0 )
 	{
 		// clean up object here
-		for( int32_t i = 0; i < MAX_MEMORY_NUM; i++ )
-		{
-			if( 0 < m_BufferId[i] )
-			{
-				drmModeRmFB( m_DspInfo.drmFd, m_BufferId[i] );
-				m_BufferId[i] = 0;
-			}
-		}
+		printf("=== drmModeRmFB fb_id(%d) ===\n", m_MemInfo[0].fb_id);
+		drmModeRmFB( m_DspInfo.drmFd, m_MemInfo[0].fb_id);
+		m_MemInfo[0].fb_id = 0;
 
 		if( 0 <= m_DspInfo.drmFd )
 		{
 			//drmClose( m_DspInfo.drmFd );
 			m_DspInfo.drmFd = -1;
 		}
+
+		printf("=== m_DspInfo.drmFd(%d) ===\n", m_DspInfo.drmFd);
 	}
 
 
@@ -167,37 +207,19 @@ int32_t NX_CRGBDraw::ImportGemFromFlink( int32_t fd, uint32_t flinkName )
 //------------------------------------------------------------------------------
 int32_t NX_CRGBDraw::Render(int32_t m_iBufferIdx)
 {
-	int32_t err;
+    int32_t err;
 
-	if(m_BufferId[m_iBufferIdx] == 0)
-	{
-		uint32_t handles[4] = { 0, };
-		uint32_t pitches[4] = { 0, };
-		uint32_t offsets[4] = { 0, };
+	// Overlay layer0 - pixel format is ARGB8888, depth(32), bpp(32)
+	printf("=== <Render> drmModeAddFB m_DspInfo.drmFd(%d) ===\n", m_DspInfo.drmFd);
+	drmModeAddFB(m_DspInfo.drmFd, m_MemInfo[0].width, m_MemInfo[0].height, 32, 32, m_MemInfo[0].pitch, \
+			m_MemInfo[0].handle, &m_MemInfo[0].fb_id);
 
-		pitches[0] = m_DspInfo.m_iDspWidth * 4;
-		pitches[1] = 0;
-		pitches[2] = 0;
-		pitches[3] = 0;
-
-		offsets[0] = 0;
-		offsets[1] = 0;
-		offsets[2] = 0;
-		offsets[3] = 0;
-
-		handles[0] = handles[1] = handles[2] = handles[3] = ImportGemFromFlink( m_DspInfo.drmFd, pRGBData[m_iBufferIdx]->flink);
-		if (drmModeAddFB2(m_DspInfo.drmFd, m_DspInfo.m_iDspWidth, m_DspInfo.m_iDspHeight, m_DspInfo.uDrmFormat,
-			handles, pitches, offsets, &m_BufferId[m_iBufferIdx], 0)) {
-				fprintf(stderr, "failed to add fb: %s\n", strerror(errno));
-		}
-	}
-
-	err = drmModeSetPlane( m_DspInfo.drmFd, m_DspInfo.planeId, m_DspInfo.crtcId, m_BufferId[m_iBufferIdx], 0,
+	printf("=== <Render> planeId(%d), crtcId(%d), fb_id(%d) ===\n", m_DspInfo.planeId, m_DspInfo.crtcId, m_MemInfo[0].fb_id);
+    err = drmModeSetPlane( m_DspInfo.drmFd, m_DspInfo.planeId, m_DspInfo.crtcId, m_MemInfo[0].fb_id, 0,
 				m_DspInfo.m_iDspX, m_DspInfo.m_iDspY, m_DspInfo.m_iDspWidth, m_DspInfo.m_iDspHeight,
 				m_DspInfo.m_iDspX << 16, m_DspInfo.m_iDspY << 16, m_DspInfo.m_iDspWidth << 16, m_DspInfo.m_iDspHeight << 16 );
 
-	return err;
-
+    return err;
 }
 
 //------------------------------------------------------------------------------

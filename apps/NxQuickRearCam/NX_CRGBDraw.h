@@ -33,6 +33,15 @@
 #include <sys/mman.h>
 #include <nxp_video_alloc.h>
 
+#include <errno.h>
+#include <sys/mman.h>
+#include <time.h>
+#include <drm_mode.h>
+#define virtual vir
+#include <xf86drm.h>
+#include <xf86drmMode.h>
+#undef virtual
+
 #define MAX_MEMORY_NUM 8
 
 typedef struct NX_RGB_DRAW_INFO {

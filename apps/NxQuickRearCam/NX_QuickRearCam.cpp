@@ -573,6 +573,7 @@ int32_t main( int argc, char **argv )
 			{
 				if(backgear_status == NX_BACKGEAR_DETECTED && m_iRearCamStatus == STATUS_STOP)
 				{
+					printf(" ======= detect ======\n");
 					//-------------QuickRaerCam Start-------------------------
 					NX_QuickRearCamStart(pQuickRearCamHandle);
 					m_iRearCamStatus = STATUS_RUN;
@@ -598,6 +599,20 @@ int32_t main( int argc, char **argv )
 														(pgl_dsp_info.m_iDspWidth+dsp_info.iDspWidth)>>1, 0,
 														ARGB_COLOR_BLACK);
 						}
+
+						for(int32_t i=0; i<PGL_H_LINE_NUM; i++)
+						{
+							if(i == 0)
+								m_HLine_Info[i].color = ARGB_COLOR_GREEN;
+							else if(i == 1)
+								m_HLine_Info[i].color = ARGB_COLOR_YELLOW;
+							else
+								m_HLine_Info[i].color = ARGB_COLOR_RED;
+
+							m_VLine_Info[i*2].color = m_HLine_Info[i].color;
+							m_VLine_Info[i*2+1].color = m_HLine_Info[i].color;
+						}
+
 						//--------------------------------------------------------
 					}
 					//--------------------------------------------------------
@@ -609,7 +624,29 @@ int32_t main( int argc, char **argv )
 				{
 					if(backgear_status == NX_BACKGEAR_NOTDETECTED && m_iRearCamStatus == STATUS_RUN)
 					{
+						printf(" ======= release ======\n");
+
 						m_bPGLDraw = false;	 //setting flag for not drawing parking guide line when released backgear
+
+						for(int32_t i=0; i<PGL_H_LINE_NUM; i++)
+						{
+							m_HLine_Info[i].color = ARGB_COLOR_DEFAULT;
+							m_VLine_Info[i*2].color = m_HLine_Info[i].color;
+							m_VLine_Info[i*2+1].color = m_HLine_Info[i].color;
+
+						}
+
+						//get buffer address for rgb data
+						m_pPGLDraw->GetMemInfo(&m_pglMemInfo, pgl_buf_idx);
+						//-------------------------------------------------
+						pBuf = (uint32_t *)m_pglMemInfo.pBuffer;
+
+						for(int32_t i=0; i<PGL_H_LINE_NUM; i++)
+						{
+							HorizontalLine(pBuf, &m_HLine_Info[i]);
+							VerticalLine(pBuf, &m_VLine_Info[i*2]);
+							VerticalLine(pBuf, &m_VLine_Info[i*2+1]);
+						}
 
 						//---------RGB drawing(parking guide line) Deinit
 						if(pgl_en == 1)
