@@ -50,6 +50,56 @@ void NX_CRGBDraw::AllocBuffer(NX_RGB_DRAW_INFO *pInfo)
 {
 	int32_t mem_size;
 
+#ifndef ANDROID
+    drmModeRes *res;
+	drmModePlaneRes *plane_res;
+	struct drm_mode_create_dumb create;
+    struct drm_mode_map_dumb map;
+	uint32_t width;
+    uint32_t height;
+    uint32_t pitch;
+    uint32_t handle;
+    uint32_t fb_id;
+	drmModeConnector *conn;
+	uint32_t conn_id;
+	uint32_t crtc_id;
+
+	memset(&m_DspInfo, 0, sizeof(NX_RGB_DRAW_INFO));
+
+	if(pInfo->drmFd < 0)
+		m_DspInfo.drmFd = drmOpen( "nexell", NULL );
+	else
+	{
+		m_DspInfo.drmFd = pInfo->drmFd;
+	}
+
+	// Get crtc_id & conn_id
+	res = drmModeGetResources(m_DspInfo.drmFd);
+	crtc_id = res->crtcs[0];
+	conn_id = res->connectors[0];
+	printf("=== <Alloc> drmModeGetResources : crtc_id(%d) conn_id(%d)===\n", crtc_id, conn_id);
+
+	// Get conn pointer
+	conn = drmModeGetConnector(m_DspInfo.drmFd, conn_id);
+	width = conn->modes[0].hdisplay;
+	height = conn->modes[0].vdisplay;
+
+	// create a dumb-buffer
+	create.width = width;
+	create.height = height;
+	create.bpp = 32;
+	drmIoctl(m_DspInfo.drmFd, DRM_IOCTL_MODE_CREATE_DUMB, &create);
+	pitch = create.pitch;
+	handle = create.handle;
+
+	// Primary layer1 - pixel format is XRGB8888, depth(24), bpp(32)
+	printf("=== <Alloc> drmModeAddFB : fd(%d) ===\n", m_DspInfo.drmFd);
+	drmModeAddFB(m_DspInfo.drmFd, width, height, 24, 32, pitch, handle, &fb_id);
+
+	printf("=== <Alloc> drmModeSetCrtc : fb_id(%d) ===\n", crtc_id, fb_id);
+	drmModeSetCrtc(m_DspInfo.drmFd, crtc_id, fb_id, 0, 0, &conn_id, 1, &conn->modes[0]);
+#endif
+
 	mem_size = pInfo->m_iDspWidth * pInfo->m_iDspHeight * 4;
 
 	for(int i=0; i<pInfo->m_iNumBuffer; i++)
