@@ -26,6 +26,7 @@
 #include <NX_CV4l2VipFilter.h>
 #include <NX_CVideoRenderFilter.h>
 #include <NX_CDeinterlaceFilter.h>
+#include <NX_CFlipFilter.h>
 #include <NX_QuickRearCam.h>
 
 #ifdef ANDROID_SURF_RENDERING
@@ -77,8 +78,9 @@ private:
 	NX_CEventNotifier*		m_pEventNotifier;
 
 	NX_CV4l2VipFilter*		m_pV4l2VipFilter;
-	NX_CDeinterlaceFilter*  m_pDeinterlaceFilter;
+	NX_CDeinterlaceFilter*	m_pDeinterlaceFilter;
 	NX_CVideoRenderFilter*	m_pVideoRenderFilter;
+	NX_CFlipFilter*			m_pFlipFilter;
 
 	NX_MEDIA_INFO videoInfo;
 	NX_DISPLAY_INFO dspInfo;
@@ -95,7 +97,7 @@ public:
 	int32_t m_CamDevFd;
 	int32_t m_DPDevFd;
 
-
+	int32_t	m_FlipDir;
 private:
 	NX_CRearCamManager (const NX_CRearCamManager &Ref);
 	NX_CRearCamManager &operator=(const NX_CRearCamManager &Ref);

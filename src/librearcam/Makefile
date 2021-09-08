@@ -23,6 +23,7 @@ INCLUDE		+=  \
 
 CXXOBJS		:=	NX_CV4l2Camera.o \
 				NX_CV4l2VipFilter.o \
+				NX_CFlipFilter.o \
 				NX_CDeinterlaceFilter.o \
 				NX_CVideoRenderFilter.o \
 

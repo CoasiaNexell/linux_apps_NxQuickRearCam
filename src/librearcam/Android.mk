@@ -39,6 +39,7 @@ endif
 LOCAL_SRC_FILES			:=  \
 	NX_CV4l2Camera.cpp \
 	NX_CV4l2VipFilter.cpp \
+	NX_CFlipFilter.cpp \
 	NX_CDeinterlaceFilter.cpp \
 	NX_CVideoRenderFilter.cpp \
 	nxp_video_alloc_drm.c \

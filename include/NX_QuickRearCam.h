@@ -44,15 +44,15 @@ typedef struct _NX_REARCAM_INFO {
 	int32_t iWidth;
 	int32_t iHeight;
 
-	int32_t		iCropX;			//	Cliper x
-	int32_t		iCropY;			//	Cliper y
-	int32_t		iCropWidth;		//	Cliper width
-	int32_t		iCropHeight;	//	Cliper height
+	int32_t	iCropX;			//	Cliper x
+	int32_t	iCropY;			//	Cliper y
+	int32_t	iCropWidth;		//	Cliper width
+	int32_t	iCropHeight;	//	Cliper height
 
-	int32_t		iOutWidth;		//	Decimator width
-	int32_t		iOutHeight;		//	Decimator height
+	int32_t	iOutWidth;		//	Decimator width
+	int32_t	iOutHeight;		//	Decimator height
 
-
+	int32_t	iFlipDir;		//	Flip Direction
 } NX_REARCAM_INFO;
 
 

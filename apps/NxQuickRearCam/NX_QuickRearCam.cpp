@@ -157,6 +157,7 @@ static void PrintUsage( const char *appName )
 	fprintf(stdout, "     -R widthxheight    : display size of camera data                      ex) -R 1080x720\n");
 	fprintf(stdout, "     -P pgl_en          : parking guide line drawing (enable : 1. disalbe : 0)  ex) -P 1\n");
 	fprintf(stdout, "     -L widthxheight    : display(LCD) size                                ex) -L 1920x720\n");
+	fprintf(stdout, "     -f direction       : flip direction (0:none, 1:horizon, 2:vertical)   ex) -f 1\n");
 	fprintf(stdout,"\n");
 }
 //------------------------------------------------------------------------------
@@ -201,7 +202,7 @@ static void cbQuickRearCamCommand( int32_t command )
 //-----------------------------------------------------------------------------
 
 //------------------------------------------------------------------------------
-static char optstr[] = "hm:i:g:b:n:c:v:p:r:d:l:s:D:R:P:L:";
+static char optstr[] = "hm:i:g:b:n:c:v:p:r:d:l:s:D:R:P:L:f:";
 
 int32_t main( int argc, char **argv )
 {
@@ -239,6 +240,7 @@ int32_t main( int argc, char **argv )
 	int32_t lcd_h = 720;
 	int32_t m_iRearCamStatus = STATUS_STOP;
 	uint32_t count = 6;
+	int32_t flip = 0;
 
 	int32_t ret = 0;
 
@@ -339,6 +341,10 @@ int32_t main( int argc, char **argv )
 			sscanf(arg, "%dx%d", &lcd_w, &lcd_h);
 			NxDbgMsg( NX_DBG_INFO, "[QuickRearCam] display(LCD) size: %dx%d\n", lcd_w, lcd_h );
 			break;
+		case 'f':  //display resolution
+			flip = atoi(optarg);
+			NxDbgMsg( NX_DBG_INFO, "[QuickRearCam] flip : %s\n", flip ? ((flip==1) ? "horizon":"vertical"):"none" );
+			break;
 		case 'h':  //help
 			PrintUsage("NxQuickRearCam");
 			return 0;
@@ -399,6 +405,7 @@ int32_t main( int argc, char **argv )
 	vip_info.iCropHeight	= vip_info.iHeight;
 	vip_info.iOutWidth 		= vip_info.iWidth;
 	vip_info.iOutHeight 	= vip_info.iHeight;
+	vip_info.iFlipDir		= flip;
 	//------------------------------------------------------------------
 
 	//--------display info setting(for redering camera data)---------

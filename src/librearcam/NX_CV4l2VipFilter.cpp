@@ -358,7 +358,7 @@ int32_t NX_CV4l2VipFilter::Init( void )
 	info.iFpsDen		= 1;
 
 	info.iNumPlane		= 1;
-	pInfo->iNumPlane = 1;
+	pInfo->iNumPlane	= 1;
 
 	info.iCropX			= 0;
 	info.iCropY			= 0;

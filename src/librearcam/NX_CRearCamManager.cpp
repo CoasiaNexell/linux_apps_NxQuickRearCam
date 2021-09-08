@@ -46,9 +46,11 @@ NX_CRearCamManager::NX_CRearCamManager()
 	, m_pV4l2VipFilter	( NULL )
 	, m_pDeinterlaceFilter	( NULL )
 	, m_pVideoRenderFilter	( NULL )
+	, m_pFlipFilter (NULL)
 	, m_MemDevFd		(-1)
 	, m_CamDevFd		(-1)
 	, m_DPDevFd		(-1)
+	, m_FlipDir (0)
 #ifdef ANDROID_SURF_RENDERING
 	, m_pAndroidRenderer	( NULL )
 #endif
@@ -65,8 +67,10 @@ NX_CRearCamManager::~NX_CRearCamManager()
 //------------------------------------------------------------------------------
 int32_t NX_CRearCamManager::InitRearCamManager(NX_REARCAM_INFO *pInfo , DISPLAY_INFO *pDspInfo, DEINTERLACE_INFO *pDeinterInfo)
 {
+	NX_FLIP_INFO flipInfo;
 	memset( &videoInfo, 0x00, sizeof(videoInfo) );
 	memset( &dspInfo, 0x00, sizeof(dspInfo));
+
 	if( pInfo->iType == CAM_TYPE_VIP )
 	{
 		videoInfo.iMediaType		= NX_TYPE_VIDEO;
@@ -86,6 +90,7 @@ int32_t NX_CRearCamManager::InitRearCamManager(NX_REARCAM_INFO *pInfo , DISPLAY_
 		videoInfo.iCropHeight		= pInfo->iCropHeight;
 		videoInfo.iOutWidth			= pInfo->iOutWidth;
 		videoInfo.iOutHeight		= pInfo->iOutHeight;
+		m_FlipDir					= pInfo->iFlipDir;
 	}
 
 	dspInfo.connectorId 		= pDspInfo->iConnectorId;
@@ -165,10 +170,17 @@ int32_t NX_CRearCamManager::InitRearCamManager(NX_REARCAM_INFO *pInfo , DISPLAY_
 		m_pAndroidRenderer = new NX_CAndroidRenderer((ANativeWindow*) pDspInfo->m_pNativeWindow);
 	}
 #endif
-	m_pVideoRenderFilter= new NX_CVideoRenderFilter();
 
+	m_pVideoRenderFilter	= new NX_CVideoRenderFilter();
 	m_pV4l2VipFilter		= new NX_CV4l2VipFilter();
 
+	if( m_FlipDir )
+	{
+		m_pFlipFilter		= new NX_CFlipFilter();
+		flipInfo.width		= videoInfo.iWidth;
+		flipInfo.height		= videoInfo.iHeight;
+		flipInfo.direction	= m_FlipDir;
+	}
 
 	if( deinterInfo.engineSel != NON_DEINTERLACER)
 	{
@@ -230,8 +242,9 @@ int32_t NX_CRearCamManager::InitRearCamManager(NX_REARCAM_INFO *pInfo , DISPLAY_
 	}
 #else
 	if( m_pV4l2VipFilter		) m_pV4l2VipFilter		->SetConfig( &videoInfo);
-	if( m_pVideoRenderFilter 	) m_pVideoRenderFilter  ->SetConfig( &dspInfo);
-	if( m_pDeinterlaceFilter	) m_pDeinterlaceFilter  ->SetConfig( &deinterInfo);
+	if( m_pVideoRenderFilter	) m_pVideoRenderFilter	->SetConfig( &dspInfo);
+	if( m_pDeinterlaceFilter	) m_pDeinterlaceFilter	->SetConfig( &deinterInfo);
+	if( m_pFlipFilter			) m_pFlipFilter			->SetConfig( &flipInfo );
 
 #endif
 	//
@@ -239,27 +252,58 @@ int32_t NX_CRearCamManager::InitRearCamManager(NX_REARCAM_INFO *pInfo , DISPLAY_
 	//
 	NX_CBasePin	*pInputPin, *pOutputPin;
 
-
 	if( m_pV4l2VipFilter && m_pDeinterlaceFilter && m_pVideoRenderFilter )
 	{
-		pOutputPin	= m_pV4l2VipFilter->FindPin( NX_PIN_OUTPUT, 0 );
-		pInputPin 	= m_pDeinterlaceFilter->FindPin (NX_PIN_INPUT, 0);
-		if( 0 > ((NX_CBaseInputPin*)pInputPin)->PinNegotiation( (NX_CBaseOutputPin*)pOutputPin ) ) goto Error;
+		if( m_FlipDir )
+		{
+			pOutputPin	= m_pV4l2VipFilter->FindPin( NX_PIN_OUTPUT, 0 );
+			pInputPin	= m_pFlipFilter->FindPin( NX_PIN_INPUT, 0 );
+			if( 0 > ((NX_CBaseInputPin*)pInputPin)->PinNegotiation( (NX_CBaseOutputPin*)pOutputPin ) ) goto Error;
 
-		pOutputPin 	= m_pDeinterlaceFilter->FindPin(NX_PIN_OUTPUT, 0);
-		pInputPin	= m_pVideoRenderFilter->FindPin( NX_PIN_INPUT, 0 );
-		if( 0 > ((NX_CBaseInputPin*)pInputPin)->PinNegotiation( (NX_CBaseOutputPin*)pOutputPin ) ) goto Error;
+			pOutputPin	= m_pFlipFilter->FindPin( NX_PIN_OUTPUT, 0 );
+			pInputPin 	= m_pDeinterlaceFilter->FindPin (NX_PIN_INPUT, 0);
+			if( 0 > ((NX_CBaseInputPin*)pInputPin)->PinNegotiation( (NX_CBaseOutputPin*)pOutputPin ) ) goto Error;
+
+			pOutputPin 	= m_pDeinterlaceFilter->FindPin(NX_PIN_OUTPUT, 0);
+			pInputPin	= m_pVideoRenderFilter->FindPin( NX_PIN_INPUT, 0 );
+			if( 0 > ((NX_CBaseInputPin*)pInputPin)->PinNegotiation( (NX_CBaseOutputPin*)pOutputPin ) ) goto Error;
+		}
+		else
+		{
+			pOutputPin	= m_pV4l2VipFilter->FindPin( NX_PIN_OUTPUT, 0 );
+			pInputPin 	= m_pDeinterlaceFilter->FindPin (NX_PIN_INPUT, 0);
+			if( 0 > ((NX_CBaseInputPin*)pInputPin)->PinNegotiation( (NX_CBaseOutputPin*)pOutputPin ) ) goto Error;
+
+			pOutputPin 	= m_pDeinterlaceFilter->FindPin(NX_PIN_OUTPUT, 0);
+			pInputPin	= m_pVideoRenderFilter->FindPin( NX_PIN_INPUT, 0 );
+			if( 0 > ((NX_CBaseInputPin*)pInputPin)->PinNegotiation( (NX_CBaseOutputPin*)pOutputPin ) ) goto Error;
+		}
 	}
 	else if(deinterInfo.engineSel == NON_DEINTERLACER && m_pV4l2VipFilter && m_pVideoRenderFilter)  //bypass
 	{
-		pOutputPin	= m_pV4l2VipFilter->FindPin( NX_PIN_OUTPUT, 0 );
-		pInputPin	= m_pVideoRenderFilter->FindPin( NX_PIN_INPUT, 0 );
-		if( 0 > ((NX_CBaseInputPin*)pInputPin)->PinNegotiation( (NX_CBaseOutputPin*)pOutputPin ) ) goto Error;
+		if( m_FlipDir )
+		{
+			pOutputPin	= m_pV4l2VipFilter->FindPin( NX_PIN_OUTPUT, 0 );
+			pInputPin	= m_pFlipFilter->FindPin( NX_PIN_INPUT, 0 );
+			if( 0 > ((NX_CBaseInputPin*)pInputPin)->PinNegotiation( (NX_CBaseOutputPin*)pOutputPin ) ) goto Error;
+
+			pOutputPin	= m_pFlipFilter->FindPin( NX_PIN_OUTPUT, 0 );
+			pInputPin	= m_pVideoRenderFilter->FindPin( NX_PIN_INPUT, 0 );
+			if( 0 > ((NX_CBaseInputPin*)pInputPin)->PinNegotiation( (NX_CBaseOutputPin*)pOutputPin ) ) goto Error;
+		}
+		else
+		{
+			pOutputPin	= m_pV4l2VipFilter->FindPin( NX_PIN_OUTPUT, 0 );
+			pInputPin	= m_pVideoRenderFilter->FindPin( NX_PIN_INPUT, 0 );
+			if( 0 > ((NX_CBaseInputPin*)pInputPin)->PinNegotiation( (NX_CBaseOutputPin*)pOutputPin ) ) goto Error;
+
+		}
 	}
 
-	if(m_pV4l2VipFilter	) m_pV4l2VipFilter	->SetDeviceFD(m_CamDevFd, m_MemDevFd);
+	if(m_pV4l2VipFilter		) m_pV4l2VipFilter		->SetDeviceFD(m_CamDevFd, m_MemDevFd);
 	if(m_pDeinterlaceFilter	) m_pDeinterlaceFilter	->SetDeviceFD(m_MemDevFd);
 	if(m_pVideoRenderFilter	) m_pVideoRenderFilter	->SetDeviceFD(m_DPDevFd);
+	if(m_pFlipFilter		) m_pFlipFilter			->SetDeviceFD(m_DPDevFd);
 
 	mRearCamStatus = REAR_CAM_STATUS_STOP;
 
@@ -268,10 +312,11 @@ int32_t NX_CRearCamManager::InitRearCamManager(NX_REARCAM_INFO *pInfo , DISPLAY_
 	return 0;
 
 Error:
-	if( m_pRefClock				) { delete m_pRefClock;				m_pRefClock				= NULL;	}
+	if( m_pRefClock				) {	delete m_pRefClock;				m_pRefClock				= NULL;	}
 	if( m_pV4l2VipFilter		) {	delete m_pV4l2VipFilter;		m_pV4l2VipFilter		= NULL; }
-	if( m_pDeinterlaceFilter    ) { delete m_pDeinterlaceFilter;    m_pDeinterlaceFilter    = NULL; }
+	if( m_pDeinterlaceFilter	) {	delete m_pDeinterlaceFilter;    m_pDeinterlaceFilter    = NULL; }
 	if( m_pVideoRenderFilter	) {	delete m_pVideoRenderFilter;	m_pVideoRenderFilter	= NULL; }
+	if( m_pFlipFilter			) {	delete m_pFlipFilter;			m_pFlipFilter			= NULL;	}
 #ifdef ANDROID_SURF_RENDERING
 	if(m_pAndroidRenderer		) {	delete m_pAndroidRenderer;		m_pAndroidRenderer		= NULL; }
 #endif
@@ -309,6 +354,16 @@ int32_t NX_CRearCamManager::Init()
 		}
 	}
 
+	if(m_pFlipFilter)
+	{
+		ret = m_pFlipFilter->Init();
+		if(ret < 0)
+		{
+			printf("m_pFlipFilter Init Fail\n");
+			return -1;
+		}
+	}
+
 	if(m_pVideoRenderFilter)
 	{
 		ret = m_pVideoRenderFilter->Init();
@@ -341,6 +396,13 @@ int32_t NX_CRearCamManager::Deinit( void )
 		m_pV4l2VipFilter->Deinit();
 		delete m_pV4l2VipFilter;
 		m_pV4l2VipFilter = NULL;
+	}
+
+	if(m_pFlipFilter)
+	{
+		m_pFlipFilter->Deinit();
+		delete m_pFlipFilter;
+		m_pFlipFilter = NULL;
 	}
 
 	if(m_pDeinterlaceFilter)
@@ -396,6 +458,17 @@ int32_t NX_CRearCamManager::Start( void )
 		}
 	}
 
+	if( m_pFlipFilter )
+	{
+		if(m_pFlipFilter->Run() < 0)
+		{
+			NxDbgMsg( NX_DBG_VBS, "%s()--m_pFlipFilter Run Fail\n", __FUNCTION__ );
+			Stop();
+			Deinit();
+			return -1;
+		}
+	}
+
 	if( m_pV4l2VipFilter )
 	{
 		if(m_pV4l2VipFilter->Run() < 0)
@@ -421,6 +494,7 @@ int32_t NX_CRearCamManager::Stop( void )
 
 	if( m_pVideoRenderFilter	) m_pVideoRenderFilter	->Stop();
 	if( m_pDeinterlaceFilter    ) m_pDeinterlaceFilter  ->Stop();
+	if( m_pFlipFilter			) m_pFlipFilter			->Stop();
 	if( m_pV4l2VipFilter		) m_pV4l2VipFilter		->Stop();
 
 	NxDbgMsg( NX_DBG_VBS, "%s()--\n", __FUNCTION__ );
@@ -435,6 +509,7 @@ int32_t NX_CRearCamManager::Pause( int32_t mbPause )
 
 	if( m_pVideoRenderFilter	) m_pVideoRenderFilter	->Pause(mbPause);
 	if( m_pDeinterlaceFilter    ) m_pDeinterlaceFilter  ->Pause(mbPause);
+	if( m_pFlipFilter			) m_pFlipFilter			->Pause(mbPause);
 	if( m_pV4l2VipFilter		) m_pV4l2VipFilter		->Pause(mbPause);
 
 	NxDbgMsg( NX_DBG_VBS, "%s()--\n", __FUNCTION__ );
